@@ -1,7 +1,11 @@
 function e2e_load_settings
   common sim_settings, settings
 
-  ;;Loads Setting needed to run a full simulation of Pic-C
+  ;;Loads Setting needed to run a full simulation
+  ;--------------------------------------------------------------------------------
+  
+  ;;General Parameters
+  date = 2459473.5                         ;;Date of Observation (JD)
 
   ;;Exotargets Parameters
   exo = {$
@@ -22,18 +26,20 @@ function e2e_load_settings
   ;;Optical Model Parameters
   picc = {$
     path:'~/idl/repo/piccsim/', $                            ;;Path to piccsim directory
-    rx_base:'rx_picture_c2_ch4', $                              ;;Base prescription to use from piccsim (Make sure the same instrument is used in exotargets)
+    rx_base:'rx_picture_c2_ch4', $                           ;;Base prescription to use from piccsim (Make sure the same instrument is used in exotargets)
     rx_dist:'picture_c2_ch4_thermal', $                      ;;Disturbed prescription (WILL BE WRITTEN TO, ADD SUBSCRIPTING TO PREVENT OVERWRITE)
     a: 1 $
   }
-
-
 
   ;;Write settings block
   ;;-----------------------------------------------------------------------------------------------------
   settings = {$
 
+    date:date, $
+    
     path:'~/idl/end2end/', $                            ;;Path to main directory
+    datapath:'~/idl/end2end/data/',$                    ;;Path to data directory
+    outpath:'~/idl/end2end/output/',$                   ;;Path to output directory
 
     exo: exo, $
     picc:picc $
