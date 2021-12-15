@@ -1,4 +1,4 @@
-function planlight, map1, target, inst, dust=dust
+function planlight, map1, inst, pinc, radout, albedo, zodis=ZODIS, sname, rstar, lstar, tstar, sdist, radring, tht, pflux, dust=dust
 
   ;;Run Zodipic
   ;;Need to check how to set up zodis keyword (Multiplier on zodi brightness). Example from zodipic lists eps eri as 67000 from:
@@ -10,24 +10,27 @@ function planlight, map1, target, inst, dust=dust
   ;;Will also need catalog of dust disk inner and outer radii! If planet is inside of dust disk, then it is highly unlikely to be seen!
   ;;Look through Glenn's thesis and citations
 
+  ;;Cache ZODIPIC results to speed up, running 30k iterations of zodipic is a bit ridiculous....
+
+  if not keyword_set(zodis) then zodis = 1
+
+
   if keyword_set(dust) then begin
     zodipic, fnu, 1000*inst.platescale, inst.lambda, pixnum = inst.pixnum, $
-      inclination = target.pinc, radout = target.sdist*inst.owa*1.1, albedo = target.palb_geo, zodis = 1, $
-      starname = target.sname, rstar = target.srad, lstar = 10.^target.slum, tstar = target.stmod, distance = target.sdist, $
-      blob=1, ring = 1, radring = 1.03*target.psepd, earthlong = target.orbit.tht, /nodisplay, /quiet
-  endif else fnu = dblarr(inst.pixnum,inst.pixnum)
+      inclination = pinc, radout = radout, albedo = albedo, zodis = zodis, $
+      starname = sname, rstar = rstar, lstar = lstar, tstar = tstar, distance = sdist, $
+      blob=1, ring = 1, radring = radring, earthlong = tht, /nodisplay, /quiet
 
-  ;;Check if planet is larger than 1 pixel
-  
+      map1 += fnu
+  endif else begin
 
-  ;;Locate planet on sky, scale to pixels
-  xf = target.psepd*[cos(target.orbit.tht), sin(target.orbit.tht)]
-  x_scale = ceil(xf / (inst.platescale*target.sdist))
-  
-  ;;add planet brightness
-  fnu[inst.pixnum/2 + x_scale[0], inst.pixnum/2 + x_scale[1]] += target.pfluxe
-
-  map1 = fnu
+    ;;Locate planet on sky, scale to pixels
+    xf = radring*[cos(tht), sin(tht)]
+    x_scale = ceil(xf / (inst.platescale*sdist))
+    
+    ;;add planet brightness
+    map1[inst.pixnum/2 + x_scale[0], inst.pixnum/2 + x_scale[1]] += pflux
+  endelse
 
   return, map1
 end

@@ -1,32 +1,38 @@
-pro read_comsol, file
+pro read_comsol, file, delim=delim
 
 ;Read Data to Structure
-data_struct = cbm_read_csv(file, n_table_header=9)
+input_struct = tp_read_txt(file, n_table_header=8, header=oldtags,delim=delim)
 
-sz = n_tags(data_struct)
-
-index = indgen(sz,start=1,/string)
-if sz LE 9 then oldtags = strcompress('FIELD0'+index,/remove_all) else begin
-  tmp1 = make_array(9,/string,value='FIELD0')
-  tmp2 = make_array(sz-9,/string,value='FIELD')
-  tmp = [tmp1,tmp2]
-  oldtags = strcompress(tmp+index,/remove_all)
-endelse
-
+sz = n_tags(input_struct)
 newtags = strarr(sz)
-newtags[0] = ['X','Y','Z']
+newtags[0] = ['X','Y','Z'] 
 
 i = 3
 while (i LT sz) do begin
-  newtags[i] = [strcompress('U'+string(i/3),/remove_all),$
-                strcompress('V'+string(i/3),/remove_all),$
-                strcompress('W'+string(i/3),/remove_all),$
-                strcompress('T'+string(i/3),/remove_all)]
+  newtags[i] = [strcompress('U'+string(i/4+1),/remove_all),$
+                strcompress('V'+string(i/4+1),/remove_all),$
+                strcompress('W'+string(i/4+1),/remove_all),$
+                strcompress('T'+string(i/4+1),/remove_all)]
   i += 4
 endwhile
 
-for i = 0,sz-1 do begin
-struct_replace_field, data_struct, oldtags[i], data_struct.(oldtags[i]), newtag=newtags[i]
+;Initialize output structure
+output_struct = create_struct(newtags[0],input_struct.(0))
+;Fill output structure
+for i = 1,sz-1 do begin
+  output_struct = create_struct(output_struct,newtags[i],input_struct.(i))
 endfor
+
+;check for parameter sweep
+if sz GT 5 then begin
+  ;Grab parmeter sweep values
+
+
+
+endif
+
+
+
+stop
 
 end
