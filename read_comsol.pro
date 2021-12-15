@@ -1,4 +1,4 @@
-pro read_comsol, file, delim=delim
+function read_comsol, file, delim=delim
 
 ;Read Data to Structure
 input_struct = tp_read_txt(file, n_table_header=8, header=oldtags,delim=delim)
@@ -25,14 +25,21 @@ endfor
 
 ;check for parameter sweep
 if sz GT 5 then begin
-  ;Grab parmeter sweep values
+  
+  ;Grab parameter sweep values
+  sweep = strarr(sz-3)
 
+  for i = 3, sz-1 do begin
+    tmp = strsplit(oldtags[i],'@',/EXTRACT)
+    sweep[i-3] = strtrim(tmp[1],2)
+  endfor
 
+  params = sweep(uniq(sweep))
 
+  ;add parameter sweep values to structure
+  output_struct = create_struct(output_struct,'params',params)
 endif
 
-
-
-stop
+return, output_struct
 
 end
