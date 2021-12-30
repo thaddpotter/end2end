@@ -5,16 +5,16 @@ Wrapper for piccsim and exotargets to incorporate thermal and mechanical loads i
 ## Documentation
 
 Git Repository Dependencies:
-  git clone git@gitlab:tpotter/end2end.git
-  git clone git@gitlab:dotpro/piccsim.git
-  git clone git@gitlab:dotpro/proper.git
-  git clone git@gitlab:dotpro/tdemidl.git
-  git clone git@gitlab:dotpro/cbmidl.git
-  git clone git@gitlab:dotpro/astron.git
-  git clone git@gitlab:dotpro/castelli.git
-  git clone git@gitlab:dotpro/coyote.git
-  git clone git@gitlab:dotpro/carsten.git
-  git clone git@gitlab:dotpro/zodipic.git
+  tpotter/end2end.git
+  dotpro/piccsim.git
+  dotpro/proper.git
+  dotpro/tdemidl.git
+  dotpro/cbmidl.git
+  dotpro/astron.git
+  dotpro/castelli.git
+  dotpro/coyote.git
+  dotpro/carsten.git
+  dotpro/zodipic.git
 	
 Setup:
   Setup Dependencies according to their instructions
@@ -28,7 +28,7 @@ Setup:
 
 # Initialize: 
 
-# I Make Raw Brightness Maps
+# I Make Raw Brightness Maps (Fast for Best Case, extremely slow otherwise)
 
 IDL> e2e_gen_maps
 
@@ -79,6 +79,7 @@ Planet and Disk Brightness
     Assemble library of dust disk parameters for targets of interest
     (Inner and outer radii, density in zodis, ...?)
     >>Add these values to planlight (currently set to use IWA, OWA for radii)
+    Sample 1 in 10 points during obs window? May need to make some edits to exotargets to handle this...
 
 e2e_disturb_prescription:
     Take input prescription and list of 6-D displacements

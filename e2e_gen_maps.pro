@@ -1,9 +1,5 @@
 pro e2e_gen_maps, best_case = BEST_CASE
 
-
-
-
-
 ;Startup                                                    
 ;-----------------------------------------------------------
 
@@ -66,7 +62,7 @@ if not keyword_set(best_case) then begin
 
   check_and_mkdir, 'data/rawmaps'
   save, star_map, dust_maps, plan_maps, filename = 'data/rawmaps/'+strlowcase(sett.exo.instname)+'_'+strjoin(sett.exo.catalog,'_')+'obs_rawmaps.idl'
-
+  print, 'Saved: data/rawmaps/'+strlowcase(sett.exo.instname)+'_'+strjoin(sett.exo.catalog,'_')+'obs_rawmaps.idl'
 endif
 
 end

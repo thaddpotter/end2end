@@ -176,15 +176,14 @@ pro write_rx,unit,rx
   endfor
 end
 
-pro disturb_rx, rx_base_name,rx_dist_name,base_file=base_file,dist_file=dist_file, dont_disturb=dont_disturb
+pro disturb_rx, rx_base_name,rx_dist_name,data_file, dont_disturb=dont_disturb
 
 ;;Procedure to convert COMSOL Output into a distance basis usable by PICCSIM
 ;-------------------------------------------------------------------------------
 ;;Arguments:
 ;rx_base_name - name of prescription to modify
 ;rx_dist name - name of prescription to write out (WARNING: Will overwrite this prescription)
-;base_file - file location of COMSOL output of initial mesh points
-;dist_file - file location of COMSOL outpuf of disturbed mesh points
+;data_file    - filename of 
 ;-------------------------------------------------------------------------------
 ;;Keywords
 ;dont disturb - test keyword, sets disturbed prescription to be equal to base
@@ -203,27 +202,29 @@ rx_base = piccsim_readrx(rx_file)
 ;Disturb Prescription
 if keyword_set(dont_disturb) then rx_dist = rx_base else begin
 
-read_dist, rx_base, base_file, dist_file, rx_dist_name
+  ;Read in COMSOL data (Note Delimiter)
+  dist_struct = read_comsol(data_file, delim=';')
 
+  ;Loop over resolved optics (double up base and dist (base to check accuracy, dist to calculate):
+  for i = 0,n_elements(rx_base.name)-1 do begin
 
-;Loop over resolved optics (double up base and dist (base to check accuracy, dist to calculate):
+    ;Get approximate location and orientation of surface
+      ;Optimize location of a plane to minimize distance to mesh points
+      ;Project points onto plane coordinates (x,y,z)
+      ;Average x,y -> Centerpoint?
 
-  ;Get approximate location and orientation of surface
-    ;Optimize location of a plane to minimize distance to mesh points
-    ;Project points onto plane coordinates (x,y,z)
-    ;Average x,y -> Centerpoint?
+    ;Fit points to zernikes
+      ;x,y,z point list -> Zernike Fit
 
-  ;Fit points to zernikes
-    ;x,y,z point list -> Zernike Fit
+    ;Take new surface vertex, calculate distance to next optic, check against base
+    ;Take surface focal length, check against base
+    
+    ;Record relevant zernike coeffients (Deviation from ideal for focus) and write out to a better sampled phase error map for piccsim
+    ;Save to file
 
-  ;Take new surface vertex, calculate distance to next optic, check against base
-  ;Take surface focal length, check against base
-  
-  ;Record relevant zernike coeffients (Deviation from ideal for focus) and write out to a better sampled phase error map for piccsim
-  ;Save to file
+    ;Write new distances and focal lengths to structure
 
-  ;Write new distances and focal lengths to structure
-
+  endfor
 
 endelse 
 
