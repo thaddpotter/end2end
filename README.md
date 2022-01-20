@@ -37,11 +37,11 @@ IDL> e2e_gen_maps
 Calculate throughput (few seconds)
     IDL> calc_throughput,'rx_base'
 Initialize the model
-    IDL> run_piccsim,'sim_system','rx_base',/init,/broadband=[xi],save_fields=[yi]
+    IDL> run_piccsim,'sim_system','rx_base',/init,broadband=[xi]
 Run the model
-    IDL> run_piccsim,'sim_system','rx_base',/broadband=[xi],save_fields=[yi]
+    IDL> run_piccsim,'sim_system','rx_base',broadband=[xi],save_fields=[yi]
 Plot output
-    IDL> plot_piccsim,'sim_system'
+    IDL> plot_piccsim,'sim_system','rx_base'
 
 # III Run EFC in piccsim (Slow)
 
@@ -59,7 +59,7 @@ Run EFC & plot results without focal plane sensing
 # IV Run disturbed model
 
 Read COMSOL Displacement Field Data, convert to idl data file
-    IDL> e2e_read_COMSOL,'file_name','disp_file.idl'
+    IDL> read_COMSOL,file_names,optic_names,'disp_file.idl'
 Disturb Prescription
     IDL> e2e_disturb_prescription,'rx_base','rx_dist', 'dist_file'
 

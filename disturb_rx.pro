@@ -176,7 +176,7 @@ pro write_rx,unit,rx
   endfor
 end
 
-pro disturb_rx, rx_base_name,rx_dist_name,data_file, dont_disturb=dont_disturb
+pro disturb_rx, rx_base_name,rx_dist_name,data_file
 
 ;;Procedure to convert COMSOL Output into a distance basis usable by PICCSIM
 ;-------------------------------------------------------------------------------
@@ -186,7 +186,7 @@ pro disturb_rx, rx_base_name,rx_dist_name,data_file, dont_disturb=dont_disturb
 ;data_file    - filename of 
 ;-------------------------------------------------------------------------------
 ;;Keywords
-;dont disturb - test keyword, sets disturbed prescription to be equal to base
+;
 ;-------------------------------------------------------------------------------
 ;;Outputs
 ;rx_dist - PICCSIM readable csv file with the same structure/order as rx_base
@@ -199,16 +199,64 @@ sett = e2e_load_settings()
 rx_file = sett.picc.path+'/data/prescriptions/'+rx_base_name+'.csv'
 rx_base = piccsim_readrx(rx_file)
 
-;Disturb Prescription
-if keyword_set(dont_disturb) then rx_dist = rx_base else begin
+;Change WD to STOP data folder
+cd, sett.datapath+'STOP/'
 
-  ;Read in COMSOL data (Note Delimiter)
-  dist_struct = read_comsol(data_file, delim=';')
+;---Read COMSOL data into structure---------------------
 
-  ;Loop over resolved optics (double up base and dist (base to check accuracy, dist to calculate):
-  for i = 0,n_elements(rx_base.name)-1 do begin
+optics = ['m1','m2']
+dist_struct = {m1:'test',$
+               m2:'test'}
 
-    ;Get approximate location and orientation of surface
+count = 0
+foreach element, optics, index do begin
+  ;Find file that contains keyword
+  data_file = file_search(element,count=count)
+
+  ;Check that only one file matches string 
+  if count GT 1 then print, 'Error, more than one file matching: ' + element & STOP
+
+  tmp_struct = read_comsol(data_file, delim=';')          ;Read Data from file
+  struct_replace_field, dist_struct, element, tmp_struct  ;Add to final structure
+endforeach
+
+;---Calculate Displacements------------------------------
+
+;Loop over elements
+foreach element, optics, index
+
+  ;Get column vectors
+  x = dist_struct.(element).X
+  y = dist_struct.(element).Y
+  z = dist_struct.(element).Z
+
+  ;Loop over parameter sweep?
+  
+  ;Get new point locations
+  xp = x + dist_struct.(element).U1
+  yp = y + dist_struct.(element).V1
+  zp = z + dist_struct.(element).W1
+
+  ;Calculate Vertex of Parent Optic??
+
+  
+
+
+endfor
+
+;---Write out disturbed prescription---------------------
+rx_file = sett.picc.path+'/data/prescriptions/'+rx_dist_name+'.csv'
+openw, 1, rx_file
+write_rx, 1, rx_dist
+close,1 
+
+;change path back to main directory
+cd, sett.path
+
+end
+
+;Previous notes on how to calculate surface data
+  ;Get approximate location and orientation of surface
       ;Optimize location of a plane to minimize distance to mesh points
       ;Project points onto plane coordinates (x,y,z)
       ;Average x,y -> Centerpoint?
@@ -223,17 +271,3 @@ if keyword_set(dont_disturb) then rx_dist = rx_base else begin
     ;Save to file
 
     ;Write new distances and focal lengths to structure
-
-  endfor
-
-endelse 
-
-
-
-;Write out disturbed prescription
-rx_file = sett.picc.path+'/data/prescriptions/'+rx_dist_name+'.csv'
-openw, 1, rx_file
-write_rx, 1, rx_dist
-close,1 
-
-end

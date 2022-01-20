@@ -6,6 +6,9 @@ function e2e_load_settings
   
   ;;General Parameters
   date = 2459473.5                         ;;Date of Observation (JD)
+  path = '~/idl/end2end/'                  ;;Path to main directory
+  datapath = path + 'data/'                ;;Path to data directory
+  outpath = path + 'output/'               ;;Path to output directory
 
   ;;Exotargets Parameters
   exo = {$
@@ -37,9 +40,9 @@ function e2e_load_settings
 
     date:date, $
     
-    path:'~/idl/end2end/', $                            ;;Path to main directory
-    datapath:'~/idl/end2end/data/',$                    ;;Path to data directory
-    outpath:'~/idl/end2end/output/',$                   ;;Path to output directory
+    path:path, $                           
+    datapath:datapath,$                    
+    outpath:outpath,$                       
 
     exo: exo, $
     picc:picc $
