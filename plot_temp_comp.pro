@@ -14,7 +14,7 @@ sett = e2e_load_settings()
 restore, 'data/flight/temp_data.idl'
 
 ;Read COMSOL output file to structure
-ctemp = read_comsol_temp('data/stop/Tsense_test.csv')
+ctemp = read_comsol_temp('data/temp/Tsense_test.txt')
 
 ;Get actual times from COMSOL output
 ctime = ctemp.time + 16d
@@ -24,9 +24,6 @@ symbol_arr = FINDGEN(17) * (!PI*2/16.)
 usersym, cos(symbol_arr), sin(symbol_arr), thick=0.5
 
 ;---Instrument Plots---------------------------------
-
-stop
-
 
 ;Trim Flight Data
 sel  = where(strmatch(t.abbr,'OBB?'),ntemp)
@@ -125,7 +122,5 @@ endfor
 cbmlegend,abbr,intarr(ntemp),color,[0.845,0.94],linsize=0.5
 mkeps,/close
 print,'Wrote: '+sett.plotpath+plotfile
-
-
 
 end

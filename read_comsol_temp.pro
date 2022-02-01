@@ -43,7 +43,7 @@ struct_base = {Time: 0d,$     ;Keys for temperature probes
 ;Read table
 readcol, file, time, t41, t42, t43, t44, t45, t15, t31, t21, t32, t22, t23, t33, t34, t24, t35, t25, $
     obb2, obb1, obb3, obm3, m1b3, m1b2, m1b1, m1p3, m1p2, m1p1, m1g3, m1g1, m1g2, m2pl, obm1, obm2, $
-    t11, t12, t13, t14, delimiter = ',', FORMAT = 'D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D'
+    t11, t12, t13, t14, comment='%', FORMAT = 'D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D'
 
 struct_full = replicate(struct_base,n_elements(time))
 

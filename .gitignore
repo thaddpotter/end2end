@@ -1,3 +1,4 @@
-#Ignore Data Files
+#Ignore Data Files and plots
 *.idl
 *.eps
+
