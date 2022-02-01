@@ -9,6 +9,7 @@ function e2e_load_settings
   path = '~/idl/end2end/'                  ;;Path to main directory
   datapath = path + 'data/'                ;;Path to data directory
   outpath = path + 'output/'               ;;Path to output directory
+  plotpath = path + 'plots/'               ;;Path to plots directory
 
   ;;Exotargets Parameters
   exo = {$
@@ -42,7 +43,8 @@ function e2e_load_settings
     
     path:path, $                           
     datapath:datapath,$                    
-    outpath:outpath,$                       
+    outpath:outpath,$
+    plotpath:plotpath,$                       
 
     exo: exo, $
     picc:picc $

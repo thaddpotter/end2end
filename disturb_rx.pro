@@ -1,9 +1,10 @@
 pro write_rx,unit,rx
 ;;Writes out piccsim-readable CSV File from RX Structure
+;;Effectively the reverse of piccsim_readrx
 
-  ed  = ''
-  md  = ','
-  ef='A0'
+  ed  = ''     ;Empty string
+  md  = ','    ;Delimiter
+  ef='A0'      ;Format code prefix
 
 ;;Define format
   format = '('+ef+','+$
@@ -107,9 +108,10 @@ pro write_rx,unit,rx
   printf,unit,header1
   printf,unit,header2
 
+;Loop over rows
   for i=0,n_elements(rx)-1 do begin
 
-     ;;Define strings
+    ;;Write data to variable
     rx_longname = rx[i].name     
     rx_type =     rx[i].type
     rx_pupil =    n2s(rx[i].pupil,format='(B)')
@@ -141,6 +143,7 @@ pro write_rx,unit,rx
     rx_extra3 =   n2s(rx[i].extra3,format='(F0.9)')   
     rx_extra4 =   n2s(rx[i].extra4,format='(F0.9)')   
 
+    ;Write to file
      printf,unit,ed,$
           rx_longname,md,$
           rx_type,md,$
@@ -176,7 +179,7 @@ pro write_rx,unit,rx
   endfor
 end
 
-pro disturb_rx, rx_base_name,rx_dist_name,data_file
+pro disturb_rx, rx_base_name,data_file,rx_dist_name=rx_dist_name
 
 ;;Procedure to convert COMSOL Output into a distance basis usable by PICCSIM
 ;-------------------------------------------------------------------------------
@@ -200,49 +203,68 @@ rx_file = sett.picc.path+'/data/prescriptions/'+rx_base_name+'.csv'
 rx_base = piccsim_readrx(rx_file)
 
 ;Change WD to STOP data folder
-cd, sett.datapath+'STOP/'
+cd, sett.datapath+'stop/'
 
 ;---Read COMSOL data into structure---------------------
 
 optics = ['m1','m2']
 dist_struct = {m1:'test',$
                m2:'test'}
+optics = tag_names(dist_struct)                          ;Necessary for indexing later...
 
 count = 0
 foreach element, optics, index do begin
-  ;Find file that contains keyword
-  data_file = file_search(element,count=count)
-
-  ;Check that only one file matches string 
-  if count GT 1 then print, 'Error, more than one file matching: ' + element & STOP
-
-  tmp_struct = read_comsol(data_file, delim=';')          ;Read Data from file
-  struct_replace_field, dist_struct, element, tmp_struct  ;Add to final structure
+    ;Find file that contains keyword
+    data_file = file_search(element+'*',count=count)
+    ;Check that only one file matches string 
+    CASE count of
+        0: print, 'No files matching: ' + element
+        1: begin
+            tmp_struct = read_comsol_disp(data_file, delim=';')          ;Read Data from file
+            struct_replace_field, dist_struct, element, tmp_struct  ;Add to final structure
+        end
+        else: print, 'Error, more than one file matching: ' + element
+    endcase 
 endforeach
 
 ;---Calculate Displacements------------------------------
 
 ;Loop over elements
-foreach element, optics, index
+foreach element, optics, index do begin
+    tmp_struct = dist_struct.(element)   ;Only one type conversion error...
+    
+    ;Get column vectors
+    x = tmp_struct.X
+    y = tmp_struct.Y
+    z = tmp_struct.Z
+    t = tmp_struct.T1
+    u = tmp_struct.U1
+    v = tmp_struct.V1
+    w = tmp_struct.W1
 
-  ;Get column vectors
-  x = dist_struct.(element).X
-  y = dist_struct.(element).Y
-  z = dist_struct.(element).Z
+    ;Find initial coordinates of parent
+    base_data = transpose([[x],[y],[z]])
+    sol = fit_conic(base_data)
+    if sol[5] GT 1 then begin
+        print, 'Error in conic fit, total square distance greater than 1m'
+        stop
+    endif
 
-  ;Loop over parameter sweep?
-  
-  ;Get new point locations
-  xp = x + dist_struct.(element).U1
-  yp = y + dist_struct.(element).V1
-  zp = z + dist_struct.(element).W1
+    ;Loop over parameter sweep?
 
-  ;Calculate Vertex of Parent Optic??
+    ;Transform coordinates back to local
+    local = rotate_displace(base_data,sol[0],0,sol[1],[sol[2],sol[3],sol[4]],/INVERSE)
 
-  
+    ;Rotate displacement vectors into local frame
+    disp_global = transpose([[u],[v],[w]])
+    disp_local = rotate_displace(disp_global,sol[0],0,sol[1],[0,0,0],/INVERSE)
 
 
-endfor
+
+
+
+    stop
+endforeach
 
 ;---Write out disturbed prescription---------------------
 rx_file = sett.picc.path+'/data/prescriptions/'+rx_dist_name+'.csv'
@@ -256,10 +278,6 @@ cd, sett.path
 end
 
 ;Previous notes on how to calculate surface data
-  ;Get approximate location and orientation of surface
-      ;Optimize location of a plane to minimize distance to mesh points
-      ;Project points onto plane coordinates (x,y,z)
-      ;Average x,y -> Centerpoint?
 
     ;Fit points to zernikes
       ;x,y,z point list -> Zernike Fit

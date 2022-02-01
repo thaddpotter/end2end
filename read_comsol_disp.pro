@@ -1,4 +1,4 @@
-function read_comsol, file, delim=delim
+function read_comsol_disp, file, delim=delim
 
 ;Read Data to Structure
 input_struct = tp_read_txt(file, n_table_header=8, header=oldtags,delim=delim)
@@ -24,8 +24,7 @@ for i = 1,sz-1 do begin
 endfor
 
 ;check for parameter sweep
-if sz GT 5 then begin
-  
+if sz GT 7 then begin
   ;Grab parameter sweep values
   sweep = strarr(sz-3)
 
