@@ -24,15 +24,25 @@ rx_base = piccsim_readrx(rx_file)
 ;Change WD to STOP data folder
 cd, sett.datapath+'stop/'
 
-;---Read COMSOL data into structure---------------------
+;---Read COMSOL data---------------------
 
-optics = ['m1','m2']
-dist_struct = {m1:'test',$
-               m2:'test'}
-optics = tag_names(dist_struct)                          ;Necessary for indexing later...
+;Initialize structures
+data_struct = {m1:'',$
+               m2:''}
 
+optics = {name: tag_names(data_struct),$
+                roc: [120.0, 20.0],$
+                conic: [-1.0, -0.422335]}
+
+out_struct = {fit: dblarr(6),$
+              disp: dblarr(6),$
+              zco: dblarr(25)}
+
+out = REPLICATE(out_struct,n_elements(optics.name))  
+
+;Read in COMSOL Data
 count = 0
-foreach element, optics, index do begin
+foreach element, optics.name, ind do begin
     ;Find file that contains keyword
     data_file = file_search(element+'*',count=count)
     ;Check that only one file matches string 
@@ -40,7 +50,7 @@ foreach element, optics, index do begin
         0: print, 'No files matching: ' + element
         1: begin
             tmp_struct = read_comsol_disp(data_file, delim=';')          ;Read Data from file
-            struct_replace_field, dist_struct, element, tmp_struct  ;Add to final structure
+            struct_replace_field, data_struct, element, tmp_struct  ;Add to final structure
         end
         else: print, 'Error, more than one file matching: ' + element
     endcase 
@@ -48,67 +58,81 @@ endforeach
 
 ;---Calculate Displacements------------------------------
 
+
+
 ;--Loop over elements---------------------------------------------------
-foreach element, optics, index do begin
-    tmp_struct = dist_struct.(index)   ;Only one type conversion error...
-    
-    ;Get column vectors
-    x = tmp_struct.X
-    y = tmp_struct.Y
-    z = tmp_struct.Z
+foreach element, optics.name, ind do begin
+    if typename(data_struct.(ind)) EQ 'STRING' then print, 'Skipping '+element+'...' else begin
 
-    ;Find initial coordinates of parent
-    base_data = transpose([[x],[y],[z]])
-    base_sol = fit_conic(base_data)
-    if base_sol[5] GT 1 then begin
-        print, 'Error in conic fit, total square distance greater than 1m'
-        stop
-    endif
+        tmp_struct = data_struct.(ind)
+        
+        ;Get column vectors
+        x = tmp_struct.X
+        y = tmp_struct.Y
+        z = tmp_struct.Z
 
-    ;--Loop over parameter sweep?--------------------------------------
+        ;Find initial coordinates of parent
+        base_data = transpose([[x],[y],[z]])
+        base_sol = fit_conic(base_data, optics.roc[ind], optics.conic[ind])
+        if base_sol[5] GT 0.01 then begin
+            print, 'Warning: poor conic fit, total square distance greater than 1cm'
+            stop
+        endif
 
-
-    ;Get displacement data
-    u = tmp_struct.U1
-    v = tmp_struct.V1
-    w = tmp_struct.W1
-
-    ;Transform base conic to local coords
-    base_local = rotate_displace(base_data,base_sol[0],0,base_sol[1],base_sol[2:4],/INVERSE)
-
-    ;Rotate displacement vectors into local frame
-    disp_global = transpose([[u],[v],[w]])
-    disp_local = rotate_displace(disp_global,base_sol[0],0,base_sol[1],[0,0,0],/INVERSE)
-    
-    ;Find coordinates of displaced optic in local frame
-    disp_sol = fit_conic(base_local+disp_local)
-    if disp_sol[5] GT 1 then begin
-        print, 'Error in conic fit, total square distance greater than 1m'
-        stop
-    endif
-
-    ;Calculate Residual Displacements
-    res_disp = (base_local + disp_local) - rotate_displace(base_local,disp_sol[0],0,disp_sol[1],disp_sol[2:4])
-
-    ;Get coordinates of residual points
-    res = base_local
-    res[2,*] = 0
-    res += res_disp
-
-    ;Fit to zernikes
-    z_coeff = fit_zernike(res)
+        ;--Loop over parameter sweep?--------------------------------------
 
 
+        ;Get displacement data
+        u = tmp_struct.U1
+        v = tmp_struct.V1
+        w = tmp_struct.W1
 
+        ;Transform base conic to local coords
+        base_local = rotate_displace(base_data,base_sol[0],0,base_sol[1],base_sol[2:4],/INVERSE)
 
-    stop
+        ;Rotate displacement vectors into local frame
+        disp_global = transpose([[u],[v],[w]])
+        disp_local = rotate_displace(disp_global,base_sol[0],0,base_sol[1],[0,0,0],/INVERSE)
+        
+        ;Find coordinates of displaced optic in local frame
+        disp_sol = fit_conic(base_local+disp_local, optics.roc[ind], optics.conic[ind])
+        if disp_sol[5] GT 0.01 then begin
+            print, 'Warning: poor conic fit, total square distance greater than 1cm'
+            stop
+        endif
+
+        ;Calculate Residual Displacements
+        res_disp = (base_local + disp_local) - rotate_displace(base_local,disp_sol[0],0,disp_sol[1],disp_sol[2:4])
+
+        ;Get coordinates of residual points
+        res = base_local
+        res[2,*] = 0
+        res += res_disp
+
+        print, 'RMS residuals for '+element+':'
+        print, 'X: '+n2s(sqrt(mean(res_disp[0,*]^2)))
+        print, 'Y: '+n2s(sqrt(mean(res_disp[1,*]^2)))
+        print, 'Z: '+n2s(sqrt(mean(res_disp[2,*]^2)))
+
+        ;Fit to zernikes
+        z_coeff = fit_zernike(res)
+
+        ;Save values
+        out[ind].fit = base_sol
+        out[ind].disp = disp_sol
+        out[ind].zco = z_coeff
+
+    endelse
 endforeach
 
-
-
-
 stop
-;---Write out disturbed prescription---------------------
+
+;---Save Data-----------------------------------------------------
+
+;Perturbation Data
+save, out, 
+
+;Write out disturbed prescription
 rx_file = sett.picc.path+'/data/prescriptions/'+rx_dist_name+'.csv'
 openw, 1, rx_file
 write_rx, 1, rx_dist
