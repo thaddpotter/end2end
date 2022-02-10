@@ -59,6 +59,9 @@ endforeach
 ;---Calculate Displacements------------------------------
 
 
+;--Loop over parameter sweep?--------------------------------------
+;(Needs to be higher than elements, since displacements must be grouped by parameter val)
+
 
 ;--Loop over elements---------------------------------------------------
 foreach element, optics.name, ind do begin
@@ -74,13 +77,7 @@ foreach element, optics.name, ind do begin
         ;Find initial coordinates of parent
         base_data = transpose([[x],[y],[z]])
         base_sol = fit_conic(base_data, optics.roc[ind], optics.conic[ind])
-        if base_sol[5] GT 0.01 then begin
-            print, 'Warning: poor conic fit, total square distance greater than 1cm'
-            stop
-        endif
-
-        ;--Loop over parameter sweep?--------------------------------------
-
+        print, 'RMS Distance from Base Fit: '+n2s(1000*SQRT(base_sol[5]/n_elements(x)))+' mm'
 
         ;Get displacement data
         u = tmp_struct.U1
@@ -96,10 +93,7 @@ foreach element, optics.name, ind do begin
         
         ;Find coordinates of displaced optic in local frame
         disp_sol = fit_conic(base_local+disp_local, optics.roc[ind], optics.conic[ind])
-        if disp_sol[5] GT 0.01 then begin
-            print, 'Warning: poor conic fit, total square distance greater than 1cm'
-            stop
-        endif
+        print, 'RMS Distance from Disp Fit: '+n2s(1000*SQRT(disp_sol[5]/n_elements(x)))+' mm'
 
         ;Calculate Residual Displacements
         res_disp = (base_local + disp_local) - rotate_displace(base_local,disp_sol[0],0,disp_sol[1],disp_sol[2:4])
@@ -108,11 +102,6 @@ foreach element, optics.name, ind do begin
         res = base_local
         res[2,*] = 0
         res += res_disp
-
-        print, 'RMS residuals for '+element+':'
-        print, 'X: '+n2s(sqrt(mean(res_disp[0,*]^2)))
-        print, 'Y: '+n2s(sqrt(mean(res_disp[1,*]^2)))
-        print, 'Z: '+n2s(sqrt(mean(res_disp[2,*]^2)))
 
         ;Fit to zernikes
         z_coeff = fit_zernike(res)
@@ -125,14 +114,15 @@ foreach element, optics.name, ind do begin
     endelse
 endforeach
 
-stop
-
 ;---Save Data-----------------------------------------------------
 
 ;Perturbation Data
-save, out, 
+save, out, filename = sett.outpath + rx_base_name + '_displace.idl'
 
-;Write out disturbed prescription
+
+stop
+
+;Write out disturbed prescription to piccsim directories
 rx_file = sett.picc.path+'/data/prescriptions/'+rx_dist_name+'.csv'
 openw, 1, rx_file
 write_rx, 1, rx_dist
@@ -142,16 +132,3 @@ close,1
 cd, sett.path
 
 end
-
-;Previous notes on how to calculate surface data
-
-    ;Fit points to zernikes
-      ;x,y,z point list -> Zernike Fit
-
-    ;Take new surface vertex, calculate distance to next optic, check against base
-    ;Take surface focal length, check against base
-    
-    ;Record relevant zernike coeffients (Deviation from ideal for focus) and write out to a better sampled phase error map for piccsim
-    ;Save to file
-
-    ;Write new distances and focal lengths to structure

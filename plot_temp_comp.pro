@@ -1,4 +1,4 @@
-pro plot_temp_comp
+pro plot_temp_comp, filename
 
 ;Plots flight 1 data and COMSOL simulation temperature data for comparison
 
@@ -14,10 +14,10 @@ sett = e2e_load_settings()
 restore, 'data/flight/temp_data.idl'
 
 ;Read COMSOL output file to structure
-ctemp = read_comsol_temp('data/temp/Tsense_test.txt')
+ctemp = read_comsol_temp('data/temp/'+filename)
 
 ;Get actual times from COMSOL output
-ctime = ctemp.time + 16d
+ctime = ctemp.time + 12d
 
 ;Filled circle symbol
 symbol_arr = FINDGEN(17) * (!PI*2/16.)

@@ -54,7 +54,7 @@ Read the DM matrix data
 Calculate the DM matrix
     IDL> calc_matrix,'sim_system','rx_base','sci','dm2'
 Run EFC & plot results without focal plane sensing
-    IDL> test_efc,'sim_system','rx_base',broadband=[xi]
+    IDL> test_efc,'sim_system','rx_base','sci','dm2',broadband=[xi]
 
 # IV Run disturbed model
 
