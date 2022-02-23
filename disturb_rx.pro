@@ -31,7 +31,7 @@ data_struct = {m1:'',$
                m2:''}
 
 optics = {name: tag_names(data_struct),$
-                roc: [120.0, 20.0],$
+                roc: [3.048, 0.508],$           ;IN METERS FOR COMSOL
                 conic: [-1.0, -0.422335]}
 
 out_struct = {fit: dblarr(6),$
