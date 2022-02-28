@@ -1,68 +1,71 @@
-pro e2e_gen_maps, best_case = BEST_CASE
+pro e2e_gen_maps, plot_maps=plot_maps
 
-;Startup                                                    
-;-----------------------------------------------------------
+;--Startup----------------------------------------------------------
 
 ;Load Simulation Parameters
 sett = e2e_load_settings()
 
 ;Read in target structure
-target_file= sett.datapath+'exotargets/'+strlowcase(sett.exo.instname)+'_'+strjoin(sett.exo.catalog,'_')+'_targets.idl'
+target_file= sett.outpath+'targets/'+strlowcase(sett.exo.instname)+'_'+strjoin(sett.exo.catalog,'_')+'_targets.idl'
 restore, target_file
 
 ;Array lengths
 l = n_tags(targets.orbit)
 n = n_elements(targets.pname)
-m = n_elements(targets.window.time)
+m = n_elements(targets.window.time) ;Old index for doing all points in obs window
 
 ;Constants
 au = 1.496d11 ;AU in meters
 rj = 7.1492d7 ;Jupter Radius in meters
 
-;Create Best-Case Brightness Maps (for the orbit tag this is set to first time entry)
-;------------------------------------------------------------
+;Sampling information from piccsim
+piccsim_settings = piccsim_load_settings(sett.picc.rx_base)
+ngrid = piccsim_settings.gridsize
+
+;--Create Best-Case Brightness Maps---------------------------------
 
 ;Initialize Arrays
-star_map = dblarr(inst.pixnum,inst.pixnum,n) ;On-Axis Sources (Star)
-best_dust_map = star_map ;All off-Axis Sources (Planet, Disk)
-best_plan_map = star_map ;Only planet brightness
+star_map = dblarr(ngrid,ngrid,n) ;On-Axis Sources (Star)
+dust_map = star_map ;All off-Axis Sources (Planet, Disk)
+plan_map = star_map ;Only planet brightness
 
-print,'Creating best case brightness maps...'
-  for ii = 0, n-1 do begin
-    star_map[*,*,ii] = starbright(star_map[*,*,ii],targets[ii].sfluxe) 
+print,'Calculating brightness maps...'
 
-    ;;Check if planet is larger than 1 pixel
-    if ( (20*rj*targets[ii].prad) GE (au*targets[ii].dist*inst.platescale) ) then print, 'Warning: Target '+targets[0].pname+' is at least on the order of the pixel size!'
-    best_plan_map[*,*,ii] = planlight(best_plan_map[*,*,ii], inst, targets[ii].pinc, targets[ii].sdist*inst.owa*1.1, targets[ii].palb_geo, targets[ii].sname, targets[ii].srad, 10.^targets[ii].slum, targets[ii].stmod, targets[ii].sdist, 1.03*targets[ii].orbit.sep[0], targets[ii].orbit.tht[0],targets[ii].pfluxe)
-    best_dust_map[*,*,ii] = planlight(best_dust_map[*,*,ii], inst, targets[ii].pinc, targets[ii].sdist*inst.owa*1.1, targets[ii].palb_geo, targets[ii].sname, targets[ii].srad, 10.^targets[ii].slum, targets[ii].stmod, targets[ii].sdist, 1.03*targets[ii].orbit.sep[0], targets[ii].orbit.tht[0],targets[ii].pfluxe , /dust)
+!except = 0 ;Zodipic Likes to send a lot of floating underflows
+  for i = 0, n-1 do begin
+
+    counter, i+1, n, 'Target '
+    ;Star Brightness
+    star_map[*,*,i] = starbright(star_map[*,*,i],targets[i].sfluxe)
+
+    ;Check if planet is larger than 1 pixel
+    if ( (20*rj*targets[i].prad) GE (au*targets[i].sdist*inst.platescale) ) then print, 'Warning: Target '+targets[i].pname+' is at least on the order of the final pixel size!'
+    
+    ;Dust and planet brightness
+    plan_map[*,*,i] = planlight(plan_map[*,*,i], targets[i], inst, ngrid)
+    dust_map[*,*,i] = planlight(plan_map[*,*,i], targets[i], inst, ngrid, /dust)
   endfor
+!except = 1 ;Back to normal
 
-check_and_mkdir, 'data/rawmaps'
-save, star_map, best_dust_map, best_plan_map, filename = 'data/rawmaps/'+strlowcase(sett.exo.instname)+'_'+strjoin(sett.exo.catalog,'_')+'bestcase_rawmaps.idl'
-print, 'Saved: data/rawmaps/'+strlowcase(sett.exo.instname)+'_'+strjoin(sett.exo.catalog,'_')+'bestcase_rawmaps.idl'
+;--Save data to file--------------------------------
+check_and_mkdir, 'output/rawmaps'
+pnames = targets.pname
+save, pnames, star_map, dust_map, plan_map, filename = 'output/rawmaps/'+strlowcase(sett.exo.instname)+'_'+sett.exo.catalog+'_rawmaps.idl'
+print, 'Saved: output/rawmaps/'+strlowcase(sett.exo.instname)+'_'+sett.exo.catalog+'_rawmaps.idl'
 
-;Create Brightness maps for all time points in Obs Window
-;-----------------------------------------------------
-if not keyword_set(best_case) then begin
+;--Plot Maps---------------------------------------------
+if keyword_set(plot_maps) then begin
 
-  ;Initialize Arrays
-  dust_maps = dblarr(inst.pixnum,inst.pixnum,n,m) ;All off-Axis Sources (Planet, Disk)
-  plan_maps = star_map ;Only planet brightness
+    plotdir = sett.plotpath + 'rawmaps/'
+    check_and_mkdir, plotdir
 
-  print,'Generating brightness maps for targets during obervation window...'
-
-  for ii = 0, n-1 do begin
-    for jj = 0,m-1 do begin
-      plan_maps[*,*,ii,jj] = planlight(plan_maps[*,*,ii,jj], inst, targets[ii].pinc, targets[ii].sdist*inst.owa*1.1, targets[ii].palb_geo, targets[ii].sname, targets[ii].srad, 10.^targets[ii].slum, targets[ii].stmod, targets[ii].sdist, 1.03*targets[ii].window.sep[jj], targets[ii].window.tht[jj],targets[ii].pfluxe)
-      dust_maps[*,*,ii,jj] = planlight(dust_maps[*,*,ii,jj], inst, targets[ii].pinc, targets[ii].sdist*inst.owa*1.1, targets[ii].palb_geo, targets[ii].sname, targets[ii].srad, 10.^targets[ii].slum, targets[ii].stmod, targets[ii].sdist, 1.03*targets[ii].window.sep[jj], targets[ii].window.tht[jj], targets[ii].pfluxe, /dust)
+    ;Loop over planets, save to fits
+    for i=0,n-1 do begin
+        plotfile=pnames[i]
+        writefits, plotdir+plotfile, alog10(plan_map[*,*,i] + dust_map[*,*,i])
     endfor
 
-    counter, ii, n, 'Target '
-  endfor
-
-  check_and_mkdir, 'data/rawmaps'
-  save, star_map, dust_maps, plan_maps, filename = 'data/rawmaps/'+strlowcase(sett.exo.instname)+'_'+strjoin(sett.exo.catalog,'_')+'obs_rawmaps.idl'
-  print, 'Saved: data/rawmaps/'+strlowcase(sett.exo.instname)+'_'+strjoin(sett.exo.catalog,'_')+'obs_rawmaps.idl'
+    print,'Wrote: '+n2s(n)+' raw brightness maps to fits'
 endif
 
 end

@@ -5,18 +5,14 @@ pro e2e_read_targetlist, OVERWRITE=OVERWRITE
 ;Keywords:
 ;OVERWRITE - Disable file check for targetlist of same name. If used, will run exotargets and overwrite.
 
-;Startup                                                    
-;-----------------------------------------------------------
+;--Startup-----------------------------------------------------------
 
 ;Load Simulation Parameters
 sett = e2e_load_settings()
-
 cd, sett.path
 
-;Check for target list, run exotargets if needed
-;-----------------------------------------------------------
-
-target_file= sett.datapath+'exotargets/'+strlowcase(sett.exo.instname)+'_'+strjoin(sett.exo.catalog,'_')+'_targets.idl'
+;--Check for target list, run exotargets if needed---------------------
+target_file= sett.datapath+'targets/'+strlowcase(sett.exo.instname)+'_'+strjoin(sett.exo.catalog,'_')+'_targets.idl'
 
 if keyword_set(OVERWRITE) or not file_test(target_file) then begin
 
@@ -53,8 +49,7 @@ if keyword_set(OVERWRITE) or not file_test(target_file) then begin
   ;Open Target and Instrument Structures
   restore, exo_target_file
 
-  ;Catalog Trimming
-  ;-----------------------------------------------------
+  ;--Catalog Trimming----------------------------------------
 
   ;IWA, OWA
   sel = where((planet.use AND (planet.psepa ge inst.iwa) AND (planet.psepa le inst.owa)) OR planet.force, nplanet)
@@ -66,9 +61,10 @@ if keyword_set(OVERWRITE) or not file_test(target_file) then begin
 
   ;Write Structure to File
   cd,sett.path
-  check_and_mkdir, sett.datapath+'exotargets'
-  print, 'Wrote targetlist for ' + strlowcase(sett.exo.instname) + ' to: ' + sett.datapath + 'exotargets'
+  check_and_mkdir, sett.datapath+'targets'
   save,inst,targets,filename=target_file
+  print, 'Wrote targetlist for ' + strlowcase(sett.exo.instname) + ' to: ' + sett.datapath + 'targets'
+
 
 endif else print, 'Targetlist already exists'
 

@@ -1,4 +1,6 @@
-#Ignore Data Files and plots
-*.idl
-*.eps
+#Ignore Plot and output directories
+plots
+output
 
+#Ignore flight data
+data/flight
