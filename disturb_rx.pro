@@ -117,7 +117,8 @@ endforeach
 ;---Save Data-----------------------------------------------------
 
 ;Perturbation Data
-save, out, filename = sett.outpath + rx_base_name + '_displace.idl'
+check_and_mkdir, sett.datapath+'displacement/'
+save, out, filename = sett.datapath +'displacement/+ rx_base_name + '_displace.idl'
 
 
 stop

@@ -5,12 +5,11 @@ pro e2e_gen_images
 ;Load settings block
 sett = e2e_load_settings()
 
-;Load input data
-;-----------------------------------------------------
+;--Load input data---------------------------------------
 
 ;Brightness maps
-filebase='output/'+strlowcase(sett.exo.instbase)+'_'+strjoin(sett.exo.catalog,'_')+'_raw_maps.idl'
-restore, filebase
+mapfile='output/'+strlowcase(sett.exo.instbase)+'_'+strjoin(sett.exo.catalog,'_')+'_raw_maps.idl'
+restore, mapfile
 
 ;Inst PSF
 
@@ -22,8 +21,7 @@ restore, filebase
 
 
 
-;Generate Images
-;---------------------------------------------------------
+;--Generate Images---------------------------------------
 
 ;Convolve with PSF
 
