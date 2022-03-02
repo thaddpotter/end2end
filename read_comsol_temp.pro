@@ -21,7 +21,9 @@ struct_base = {Time: 0d,$     ;Keys for temperature probes
                 OBB2: 0d,$
                 OBB1: 0d,$
                 OBB3: 0d,$
-                OBM3: 0d,$
+                OBM2: 0d,$
+                OBM1: 0d,$
+                M1G1: 0d,$
                 M1B3: 0d,$
                 M1B2: 0d,$
                 M1B1: 0d,$
@@ -29,20 +31,17 @@ struct_base = {Time: 0d,$     ;Keys for temperature probes
                 M1P2: 0d,$
                 M1P1: 0d,$
                 M1G3: 0d,$
-                M1G1: 0d,$
-                M1G2: 0d,$
                 M2PL: 0d,$
-                OBM1: 0d,$
-                OBM2: 0d,$
+                M1G2: 0d,$
+                OBM3: 0d,$
                 T11: 0d,$
                 T12: 0d,$
                 T13: 0d,$
                 T14: 0d}
 
-
 ;Read table
 readcol, file, time, t41, t42, t43, t44, t45, t15, t31, t21, t32, t22, t23, t33, t34, t24, t35, t25, $
-    obb2, obb1, obb3, obm3, m1b3, m1b2, m1b1, m1p3, m1p2, m1p1, m1g3, m1g1, m1g2, m2pl, obm1, obm2, $
+    obb2, obb1, obb3, obm2, obm1, m1g1, m1b3, m1b2, m1b1, m1p3, m1p2, m1p1, m1g3, m2pl, m1g2, obm3, $
     t11, t12, t13, t14, comment='%', FORMAT = 'D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D'
 
 struct_full = replicate(struct_base,n_elements(time))

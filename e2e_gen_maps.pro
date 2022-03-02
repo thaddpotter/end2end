@@ -1,5 +1,16 @@
 pro e2e_gen_maps, plot_maps=plot_maps
-
+;-------------------------------------------------------------------
+;Calculates raw brightness maps for stars, dust, and planets
+;
+;Args:
+;none
+;
+;Keywords:
+;/plot_maps - Flag to generate fits plots of the raw brightness maps
+;
+;Returns:
+;none
+;
 ;--Startup----------------------------------------------------------
 
 ;Load Simulation Parameters
@@ -62,7 +73,7 @@ if keyword_set(plot_maps) then begin
     ;Loop over planets, save to fits
     for i=0,n-1 do begin
         plotfile=pnames[i]
-        writefits, plotdir+plotfile, alog10(plan_map[*,*,i] + dust_map[*,*,i])
+        writefits, plotdir+plotfile, plan_map[*,*,i] + dust_map[*,*,i]
     endfor
 
     print,'Wrote: '+n2s(n)+' raw brightness maps to fits'
