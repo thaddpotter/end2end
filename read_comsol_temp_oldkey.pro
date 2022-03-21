@@ -1,52 +1,50 @@
-function read_comsol_temp, file
+function read_comsol_temp_oldkey, file
 
 ;;Define Structure
 struct_base = {Time: 0d,$     ;Keys for temperature probes
                 ;Out of order due to COMSOL geometric point ordering
-                T25: 0d,$
-                T35: 0d,$
-                OBM2: 0d,$
-                OBM3: 0d,$
-                OBM1: 0d,$
-                OBB2: 0d,$
-                OBB3: 0d,$
-                OBB1: 0d,$
+                T41: 0d,$
+                T42: 0d,$
+                T43: 0d,$
+                T44: 0d,$
+                T45: 0d,$
+                T15: 0d,$
+                T31: 0d,$
+                T21: 0d,$
+                T32: 0d,$
+                T22: 0d,$
+                T23: 0d,$
+                T33: 0d,$
+                T34: 0d,$
                 T24: 0d,$
+                T35: 0d,$
+                T25: 0d,$
+                OBB2: 0d,$
+                OBB1: 0d,$
+                OBB3: 0d,$
+                OBM2: 0d,$
+                OBM1: 0d,$
+                M1G1: 0d,$
+                M1B3: 0d,$
                 M1B2: 0d,$
                 M1B1: 0d,$
-                M1B3: 0d,$
+                M1P3: 0d,$
                 M1P2: 0d,$
                 M1P1: 0d,$
-                M1P3: 0d,$
-                M1G1: 0d,$
-                M1G2: 0d,$
-                T15: 0d,$
-                T45: 0d,$
                 M1G3: 0d,$
-                T34: 0d,$
-                T33: 0d,$
-                T23: 0d,$
-                T22: 0d,$
-                T14: 0d,$
-                T44: 0d,$
-                T32: 0d,$
-                T13: 0d,$
-                T43: 0d,$
-                T12: 0d,$
-                T42: 0d,$
-                M2GL: 0d,$ 
+                M1G2: 0d,$
+;                M2GL: 0d,$   ;Comment this line for old versions
                 M2PL: 0d,$
-                T21: 0d,$
-                T31: 0d,$
+                OBM3: 0d,$
                 T11: 0d,$
-                T41: 0d}
+                T12: 0d,$
+                T13: 0d,$
+                T14: 0d}
 
 ;Read table
-readcol, file, time, T25, T35, OBM2, OBM3, OBM1, OBB2, OBB3, OBB1, T24, M1B2, M1B1, M1B3, M1P2, M1P1, M1P3, M1G1, M1G2, $
-    T15, T45, M1G3, T34, T33, T23, T22, T14, T44, T32, T13, T43, T12, T42, $
-    ;M2GL, $
-    M2PL, T21, T31, T11, T41, $
-    comment='%', FORMAT = 'D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D'
+readcol, file, time, t41, t42, t43, t44, t45, t15, t31, t21, t32, t22, t23, t33, t34, t24, t35, t25, $
+    obb2, obb1, obb3, obm2, obm1, m1g1, m1b3, m1b2, m1b1, m1p3, m1p2, m1p1, m1g3, m2pl, m1g2, obm3, $
+    t11, t12, t13, t14, comment='%', FORMAT = 'D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D'
 
 struct_full = replicate(struct_base,n_elements(time))
 
@@ -88,7 +86,6 @@ struct_full[*].m1g1 = m1g1
 struct_full[*].m1g2 = m1g2
 struct_full[*].m1g3 = m1g3
 struct_full[*].m2pl = m2pl
-;struct_full[*].m2gl = m2gl
 
 return, struct_full
 
