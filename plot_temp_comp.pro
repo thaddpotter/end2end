@@ -220,7 +220,7 @@ print,'Wrote: '+sett.plotpath+'temp/'+plotfile
 ;---Secondary Plots---------------------------------
 
 ;Trim Flight Data
-sel  = where( (t.abbr EQ 'M2GL') OR (t.abbr EQ 'M2PL'),ntemp)
+sel  = where( strmatch(t.abbr,'M2??') ,ntemp)
 ss   = sort(t[sel].abbr)
 sel  = sel[ss]
 ftemp = adc_temp[sel,*]

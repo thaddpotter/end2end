@@ -36,6 +36,7 @@ struct_base = {Time: 0d,$     ;Keys for temperature probes
                 T42: 0d,$
                 M2GL: 0d,$ 
                 M2PL: 0d,$
+                M2BK: 0d,$
                 T21: 0d,$
                 T31: 0d,$
                 T11: 0d,$
@@ -43,9 +44,7 @@ struct_base = {Time: 0d,$     ;Keys for temperature probes
 
 ;Read table
 readcol, file, time, T25, T35, OBM2, OBM3, OBM1, OBB2, OBB3, OBB1, T24, M1B2, M1B1, M1B3, M1P2, M1P1, M1P3, M1G1, M1G2, $
-    T15, T45, M1G3, T34, T33, T23, T22, T14, T44, T32, T13, T43, T12, T42, $
-    ;M2GL, $
-    M2PL, T21, T31, T11, T41, $
+    T15, T45, M1G3, T34, T33, T23, T22, T14, T44, T32, T13, T43, T12, T42, M2GL, M2PL, M2BK, T21, T31, T11, T41, $
     comment='%', FORMAT = 'D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D'
 
 struct_full = replicate(struct_base,n_elements(time))
@@ -88,7 +87,8 @@ struct_full[*].m1g1 = m1g1
 struct_full[*].m1g2 = m1g2
 struct_full[*].m1g3 = m1g3
 struct_full[*].m2pl = m2pl
-;struct_full[*].m2gl = m2gl
+struct_full[*].m2gl = m2gl
+struct_full[*].m2bk = m2bk
 
 return, struct_full
 
