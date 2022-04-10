@@ -40,7 +40,7 @@ Initialize the model
     IDL> run_piccsim,'sim_system','rx_base',/init,broadband=[xi]
 Run the model
     IDL> run_piccsim,'sim_system','rx_base',broadband=[xi],save_fields=[yi]
-Plot output
+Plot output (make sure things are working correctly)
     IDL> plot_piccsim,'sim_system','rx_base'
 
 # III Run EFC in piccsim (Slow)
@@ -50,11 +50,13 @@ Calculate occulter transmission (~1hr)
 Collect the DM matrix data (~2 hrs)
     IDL> run_piccsim,'sim_system','rx_base',caldm='dm2',broadband=[xi]
 Read the DM matrix data
-    IDL> read_matrix,'sim_system','rx_base','sci','dm2',/zero_ref
+    IDL> read_matrix,'sim_system','rx_base','sci','dm2',[/zero_ref]
 Calculate the DM matrix
     IDL> calc_matrix,'sim_system','rx_base','sci','dm2'
 Run EFC & plot results without focal plane sensing
     IDL> test_efc,'sim_system','rx_base','sci','dm2',broadband=[xi]
+Plot final outputs, include fits files (needed for contrast maps)
+    IDL> plot_piccsim,'sim_system','rx_base',/save_fits
 
 # IV Run disturbed model
 
