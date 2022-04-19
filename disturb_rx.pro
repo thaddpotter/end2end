@@ -1,11 +1,11 @@
-pro disturb_rx, rx_base_name,rx_dist_name=rx_dist_name
+pro disturb_rx, rx_base_name,suffix=suffix
 
 ;;Procedure to convert COMSOL Output into a distance basis usable by PICCSIM
 ;-------------------------------------------------------------------------------
 ;;Arguments:
 ;rx_base_name - name of prescription to modify
-;rx_dist name - name of prescription to write out (WARNING: Will overwrite this prescription)
-;data_file    - filename of 
+;suffix       - suffix to add to disturbed prescription
+;               defaults to '_dist'
 ;-------------------------------------------------------------------------------
 ;;Keywords
 ;
@@ -65,8 +65,9 @@ endforeach
 
 ;--Loop over elements---------------------------------------------------
 foreach element, optics.name, ind do begin
-    if typename(data_struct.(ind)) EQ 'STRING' then print, 'Skipping '+element+'...' else begin
+    if typename(data_struct.(ind)) EQ 'STRING' then print, '--Skipping '+element+'...' else begin
 
+        print, '--Calculating Displacement for ' + element
         tmp_struct = data_struct.(ind)
         
         ;Get column vectors
@@ -93,6 +94,13 @@ foreach element, optics.name, ind do begin
         
         ;Find coordinates of displaced optic in local frame
         disp_sol = fit_conic(base_local+disp_local, optics.roc[ind], optics.conic[ind])
+        
+        print, '--Displacement Vector' 
+        print, 'Rx (deg): ' + n2s(disp_sol[0])
+        print, 'Rz (deg): ' + n2s(disp_sol[1])
+        print, 'X (m): ' + n2s(disp_sol[2])
+        print, 'Y (m): ' + n2s(disp_sol[3])
+        print, 'Z (m): ' + n2s(disp_sol[4])
         print, 'RMS Distance from Disp Fit: '+n2s(1000*SQRT(disp_sol[5]/n_elements(x)))+' mm'
 
         ;Calculate Residual Displacements
@@ -105,6 +113,9 @@ foreach element, optics.name, ind do begin
 
         ;Fit to zernikes
         z_coeff = fit_zernike(res)
+        max_z = max(z_coeff,ind_z)
+        print, 'Maximum Zernike Coefficient: ' + n2s(max_z)
+        print, 'Zernike Term: ' + zernike_name(ind_z+1)
 
         ;Save values
         out[ind].fit = base_sol
@@ -114,17 +125,22 @@ foreach element, optics.name, ind do begin
     endelse
 endforeach
 
-;---Save Data-----------------------------------------------------
+;---Create Displaced Prescription------------------------------
+
+
+
+;---Output-----------------------------------------------------
 
 ;Perturbation Data
-check_and_mkdir, sett.datapath+'displacement/'
-save, out, filename = sett.datapath +'displacement/+ rx_base_name + '_displace.idl'
+check_and_mkdir, sett.outpath+'displacement/'
+save, out, filename = sett.outpath +'displacement/'+ rx_base_name + '_displace.idl'
 
 
 stop
 
 ;Write out disturbed prescription to piccsim directories
-rx_file = sett.picc.path+'/data/prescriptions/'+rx_dist_name+'.csv'
+if not keyword_set(suffix) then suffix = '_dist'
+rx_file = sett.picc.path+'/data/prescriptions/'+rx_base_name + suffix +'.csv'
 openw, 1, rx_file
 write_rx, 1, rx_dist
 close,1 
