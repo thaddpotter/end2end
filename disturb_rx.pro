@@ -127,16 +127,13 @@ endforeach
 
 ;---Create Displaced Prescription------------------------------
 
-
+rx_dist = rx_base
 
 ;---Output-----------------------------------------------------
 
 ;Perturbation Data
 check_and_mkdir, sett.outpath+'displacement/'
 save, out, filename = sett.outpath +'displacement/'+ rx_base_name + '_displace.idl'
-
-
-stop
 
 ;Write out disturbed prescription to piccsim directories
 if not keyword_set(suffix) then suffix = '_dist'
