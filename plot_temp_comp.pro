@@ -1,4 +1,4 @@
-pro plot_temp_comp, filename, oldkey=oldkey
+pro plot_temp_comp, filename, oldkey=oldkey, flight_only=flight_only
 
 ;Plots flight 1 data and COMSOL simulation temperature data for comparison
 ;The majority of this code is adapted from plot_flight_temp.pro in the picctest repository
@@ -147,8 +147,10 @@ for i=0,ntemp-1 do begin
     ;Match tag to structure
     j = where(tag_names(ctemp) eq strupcase(strtrim(strjoin(strsplit(abbr[i],'-',/EXTRACT)),2)),ncomsol)
     ;Plot COMSOL Data
-    if ncomsol eq 1 then $
-    oplot,ctime, ctemp.(j)-273.15,color=color[i],psym=8
+    if not keyword_set(flight_only) then begin
+        if ncomsol eq 1 then $
+        oplot,ctime, ctemp.(j)-273.15,color=color[i],psym=8
+    endif
 endfor
 
 cbmlegend,abbr,intarr(ntemp),color,[0.845,0.94],linsize=0.5
