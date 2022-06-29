@@ -23,7 +23,7 @@ out = replicate(tmp,n)
 ;find values
 for i = 0, n-1 do begin
     out[i].abbr = t[i].abbr
-    out[i].t0 = adc_temp[i,ind]
+    out[i].t0 = adc_temp[i,ind] + 273.15
 endfor
 
 ;write to csv

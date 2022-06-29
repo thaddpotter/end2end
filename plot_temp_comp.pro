@@ -90,7 +90,7 @@ color=bytscl(dindgen(ntemp),top=254)
 loadct,39
 
 ;Initialize Plot, symbols
-plot,time,ftemp[0,*],position=[0.12,0.12,0.84,0.94],yrange=[-40,40],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]',title='Bench Temperatures'
+plot,time,ftemp[0,*],position=[0.12,0.12,0.84,0.94],yrange=[-40,40],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]'
 
 ;Loop over key values
 for i=0,ntemp-1 do begin
@@ -157,7 +157,7 @@ color=bytscl(dindgen(ntemp),top=254)
 loadct,39
 
 ;Initialize Plot, symbols
-plot,time,ftemp[0,*],position=[0.12,0.12,0.84,0.94],yrange=[-20,30],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]',title='Primary Temperatures'
+plot,time,ftemp[0,*],position=[0.12,0.12,0.84,0.94],yrange=[-20,30],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]'
 
 ;Loop over key values
 for i=0,ntemp-1 do begin
@@ -224,7 +224,7 @@ color=bytscl(dindgen(ntemp),top=254)
 loadct,39
 
 ;Initialize Plot
-plot,time,ftemp[0,*],position=[0.12,0.12,0.84,0.94],yrange=[-60,30],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]',title='Truss Temperatures'
+plot,time,ftemp[0,*],position=[0.12,0.12,0.84,0.94],yrange=[-60,30],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]'
 
 ;Loop over key values
 for i=0,ntemp-1 do begin
@@ -289,7 +289,7 @@ color=bytscl(dindgen(ntemp),top=254)
 loadct,39
 
 ;Initialize Plot, symbols
-plot,time,ftemp[0,*],position=[0.12,0.12,0.84,0.94],yrange=[-50,30],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]',title='Bench Temperatures'
+plot,time,ftemp[0,*],position=[0.12,0.12,0.84,0.94],yrange=[-50,30],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]'
 
 ;Loop over key values
 for i=0,ntemp-1 do begin
@@ -360,7 +360,7 @@ if keyword_set(search) then begin
     loadct,39
 
     ;Initialize Plot, symbols
-    plot,time,ftemp[0,*],position=[0.12,0.12,0.84,0.94],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]',title= filename
+    plot,time,ftemp[0,*],position=[0.12,0.12,0.84,0.94],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]'
 
     ;Loop over key values
     for i=0,ntemp-1 do begin
