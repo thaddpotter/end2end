@@ -1,6 +1,13 @@
-% Model:              PicC_fullinst_tstep.mph
-% Version:            COMSOL 5.6.0.401
-% Date:               Jun 9 2022, 16:10
-% Table:              Table 2 - Bench_Test
-% Time (h)               x-coordinate (m), Point: 1107x-coordinate (m), Point: 1108x-coordinate (m), Point: 1155x-coordinate (m), Point: 1156y-coordinate (m), Point: 1107y-coordinate (m), Point: 1108y-coordinate (m), Point: 1155y-coordinate (m), Point: 1156z-coordinate (m), Point: 1107z-coordinate (m), Point: 1108z-coordinate (m), Point: 1155z-coordinate (m), Point: 1156Temperature (K), Point: 1107Temperature (K), Point: 1108Temperature (K), Point: 1155Temperature (K), Point: 1156
-0                        -0.0569942736183912      -0.056994273618391246    0.9988638986755968       0.9988638986755968       -0.3047999999998626      0.3048000000001374       -0.30479999999986257     0.30480000000013746      0.35271697788015455      0.35271697788015455      0.9623169778801545       0.9623169778801545       260.0065968543341        260.0058432716147        260.00322945292095       260.0030937442874
+% Model:              PicC_fullinst_union.mph;;;;;;
+% Version:            COMSOL 5.6.0.401;;;;;;
+"% Date:               Jun 29 2022; 11:32";;;;;;
+% Dimension:          3;;;;;;
+% Nodes:              2592;;;;;;
+% Expressions:        4;;;;;;
+"% Description:        X-coordinate; Y-coordinate; Z-coordinate; Temperature";;;;;;
+% Length unit:        m;;;;;;
+% X;Y;Z;X (m) @ t=0;Y (m) @ t=0;Z (m) @ t=0;T (K) @ t=0
+-0.056994274;-0.3048;0.352716978;-0.056994274;-0.3048;0.352716978;260.0028471
+-0.056994274;0.3048;0.352716978;-0.056994274;0.3048;0.352716978;260.0022579
+0.998863899;-0.3048;0.962316978;0.998863899;-0.3048;0.962316978;260.0030958
+0.998863899;0.3048;0.962316978;0.998863899;0.3048;0.962316978;260.0029163
