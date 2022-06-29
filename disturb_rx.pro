@@ -49,14 +49,12 @@ out = REPLICATE( out_struct,n_elements(optics.name) + 1)
 count = 0
 foreach element, optics.name, ind do begin
     ;Find file that contains keyword
-    data_file = file_search(element+'*',count=count)
+    data_file = file_search(strlowcase(element)+'*',count=count)
     ;Check that only one file matches string 
     CASE count of
         0: print, 'No files matching: ' + element
         1: begin
-            if strmatch(element,'M*') then $
-            tmp_struct = read_comsol_disp(data_file, delim=';') else $
-            tmp_struct = read_comsol_bench(data_file, delim=';')        ;Read Data from file
+            tmp_struct = read_comsol_disp(data_file, delim=';')         ;Read Data from file
             struct_replace_field, data_struct, element, tmp_struct      ;Add to final structure
         end
         else: print, 'Error, more than one file matching: ' + element
@@ -77,19 +75,19 @@ foreach element, optics.name[0:1], ind do begin
         print, '--Calculating Displacement for ' + element
         tmp_struct = data_struct.(ind)
         
-        mirror_ sol = get_mirror_displace(tmp_struct, optics.roc[ind], optics.conic[ind], element, quiet=quiet)
+        mirror_sol = calc_mirror_displace(tmp_struct, optics.roc[ind], optics.conic[ind], element, quiet=quiet)
 
-        out[ind].fit = mirror_sol[:,0]
-        out[ind].disp = mirror_sol[:,1]
+        out[ind].fit = mirror_sol[*,0]
+        out[ind].disp = mirror_sol[*,1]
     endelse
 endforeach
 
 ;--Optical Bench-----------------------------------------------
 
 print, '--Calculating Displacement for optical bench'
-tmp_struct = data_struct[2]
+tmp_struct = data_struct.(2)
 
-bench_disp = get_bench_displace(tmp_struct, /quiet)
+bench_disp = calc_bench_displace(tmp_struct, /quiet)
 
 out[2].disp = bench_disp
 
