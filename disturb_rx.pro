@@ -102,9 +102,12 @@ check_and_mkdir, sett.outpath+'displacement/'
 save, out, filename = sett.outpath +'displacement/'+ rx_base_name + '_displace.idl'
 print, 'Saved: ' + sett.outpath +'displacement/'+ rx_base_name + '_displace.idl'
 
-;Write out disturbed prescription to piccsim directories
+;Write out tolerance file
+tolfile = sett.outpath +'displacement/'+ rx_base_name + '.tol' 
+tscfile = sett.outpath +'displacement/'+ rx_base_name + '.tsc'
+write_tol, 1, tolfile, tscfile, out
 
-;if not keyword_set(suffix) then suffix = '_dist'
+;Write out disturbed prescription to piccsim directories
 ;rx_file = sett.picc.path+'/data/prescriptions/'+rx_base_name + suffix +'.csv'
 ;openw, 1, rx_file
 ;write_rx, 1, rx_dist

@@ -32,7 +32,7 @@ Setup:
 
 IDL> e2e_gen_maps
 
-# II Run base model in piccsim (Fast)
+# II Run base model in piccsim (Fast, must be run inside piccsim directory)
 
 Calculate throughput (few seconds)
     IDL> calc_throughput,'rx_base'
@@ -43,7 +43,7 @@ Run the model
 Plot output (make sure things are working correctly)
     IDL> plot_piccsim,'sim_system','rx_base'
 
-# III Run EFC in piccsim (Slow)
+# III Run EFC in piccsim (Slow, must be run inside piccsim directory)
 
 Calculate occulter transmission (~1hr)
     IDL> calc_transmission,'sim_system','rx_base',broadband=[xi]
@@ -62,8 +62,8 @@ Plot final outputs, include fits files (needed for contrast maps)
 
 Read COMSOL Displacement Field Data, convert to idl data file
     IDL> read_COMSOL,file_names,optic_names,'disp_file.idl'
-Disturb Prescription
-    IDL> e2e_disturb_prescription,'rx_base','rx_dist', 'dist_file'
+Calculate Displacements
+    IDL> disturb_rx,'rx_base','rx_dist', ['dist_files',]
 
 
 Repeat steps 2,3 with 'rx_base' -> 'rx_dist'    
@@ -83,12 +83,8 @@ Planet and Disk Brightness
     >>Add these values to planlight (currently set to use IWA, OWA for radii)
     Sample 1 in 10 points during obs window? May need to make some edits to exotargets to handle this...
 
-e2e_disturb_prescription:
-    Take input prescription and list of 6-D displacements
-    Convert prescription to 6-D?
-    Displace Optics
-    Conver
-    write out a new csv prescription
+Running from Displaced coordinates
+    ZEMAX vs piccsim?
 
 
 
