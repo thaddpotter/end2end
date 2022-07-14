@@ -1,4 +1,4 @@
-pro plot_temp_comp, filename, oldkey=oldkey, newkey=newkey, flight_only=flight_only, model_only=model_only, search=search
+pro plot_temp_comp, filename, key=key, flight_only=flight_only, model_only=model_only, search=search
 
 ;Plots flight 1 data and COMSOL simulation temperature data for comparison
 ;The majority of this code is adapted from plot_flight_temp.pro in the picctest repository
@@ -25,14 +25,11 @@ sett = e2e_load_settings()
 restore, 'data/flight/temp_data.idl'
 
 ;Read COMSOL output file to structure
-if keyword_set(oldkey) then ctemp = read_comsol_temp_oldkey('data/temp/'+filename) else $
-if keyword_set(newkey) then ctemp = read_comsol_temp_newkey('data/temp/'+filename) else $
-ctemp = read_comsol_temp('data/temp/'+filename)
-
+ctemp = read_comsol_temp('data/temp/'+filename, key)
 check_and_mkdir, sett.plotpath + 'temp/'
 
 ;Get actual times from COMSOL output
-ctime = ctemp.time + 12d
+ctime = ctemp.time + 14d
 
 ;Filled circle symbol
 symbol_arr = FINDGEN(17) * (!PI*2/16.)
@@ -181,7 +178,7 @@ print,'Wrote: '+sett.plotpath+'temp/'+plotfile
 ;---Truss Plots---------------------------------
 
 ;Trim Flight Data
-sel  = where(t.location eq 'Truss',ntemp)
+sel  = where(t.location eq 'Truss' and not strmatch(t.abbr, 'OBM*'),ntemp)
 ss   = sort(t[sel].abbr)
 sel  = sel[ss]
 ftemp = adc_temp[sel,*]

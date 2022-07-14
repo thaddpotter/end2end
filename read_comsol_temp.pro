@@ -1,4 +1,4 @@
-function read_comsol_temp, file
+function read_comsol_temp, file, key
 
 ;;Define Structure
 struct_base = {Time: 0d,$     ;Keys for temperature probes
@@ -43,9 +43,37 @@ struct_base = {Time: 0d,$     ;Keys for temperature probes
                 T41: 0d}
 
 ;Read table
-readcol, file, time, T25, T35, OBM2, OBM3, OBM1, OBB2, OBB3, OBB1, T24, M1B2, M1B1, M1B3, M1P2, M1P1, M1P3, M1G1, M1G2, $
+case key of
+0: begin
+    readcol, file, time, t41, t42, t43, t44, t45, t15, t31, t21, t32, t22, t23, t33, t34, t24, t35, t25, obb2, obb1, obb3, $
+    obm2, obm1, m1g1, m1b3, m1b2, m1b1, m1p3, m1p2, m1p1, m1g3, m2pl, m1g2, obm3, t11, t12, t13, t14, $
+    comment='%', FORMAT = 'D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D'
+end
+1: begin    
+    readcol, file, time, T25, T35, OBM2, OBM3, OBM1, OBB2, OBB3, OBB1, T24, M1B2, M1B1, M1B3, M1P2, M1P1, M1P3, M1G1, M1G2, $
     T15, T45, M1G3, T34, T33, T23, T22, T14, T44, T32, T13, T43, T12, T42, M2GL, M2PL, M2BK, T21, T31, T11, T41, $
     comment='%', FORMAT = 'D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D'
+end
+2: begin
+    readcol, file, time,T25,T35,OBM2,OBM3,M1B2,M1P2,M1G2,M1B1,M1B3,T15,T45,M1P1,M1P3,M1G1,T24,T34,M1G3,OBM1, $
+    T33,T23,T14,T44,T22,T32,T13,T43,T12,T42,M2PL,T21,T31,T11,T41,OBB2,OBB3,OBB1,M2GL, $
+    comment='%', FORMAT = 'D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D'
+end
+3: begin
+    readcol, file, time,T25,T35,OBM2,OBM3,T15,T45,T24,T34,OBM1,T33,T23,T14,T44,T22,T32,T13,T43,T12,T42,T21, $
+    T31,M2PL,T11,T41,OBB2,OBB3,OBB1,M1B2,M1P2,M1G2,M1B3,M1B1,M1P3,M1P1,M1G3,M1G1,M2GL, $
+    comment='%', FORMAT = 'D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D'
+end
+4: begin
+    readcol, file, time,T25,T15,T24,OBM2,T14,T23,T13,T22,OBM3,T12,T21,OBM1,T35,T11,T45,T34,M2PL, $
+    T44,T33,T43,T32,T42,T31,T41,OBB2,OBB3,OBB1,M1B1,M1P1,M1P2,M1B2,M1B3,M1P3,M1G1,M1G2,M1G3,M2GL, $
+    comment='%', FORMAT = 'D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D'
+end
+else: begin
+    print, 'Invalid Key Selected'
+    stop
+end
+endcase
 
 struct_full = replicate(struct_base,n_elements(time))
 
@@ -88,7 +116,7 @@ struct_full[*].m1g2 = m1g2
 struct_full[*].m1g3 = m1g3
 struct_full[*].m2pl = m2pl
 struct_full[*].m2gl = m2gl
-struct_full[*].m2bk = m2bk
+;struct_full[*].m2bk = m2bk
 
 return, struct_full
 
