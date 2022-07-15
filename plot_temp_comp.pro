@@ -1,4 +1,4 @@
-pro plot_temp_comp, filename, key=key, flight_only=flight_only, model_only=model_only, search=search
+pro plot_temp_comp, filename, key=key, flight_only=flight_only, model_only=model_only
 
 ;Plots flight 1 data and COMSOL simulation temperature data for comparison
 ;The majority of this code is adapted from plot_flight_temp.pro in the picctest repository
@@ -13,8 +13,8 @@ pro plot_temp_comp, filename, key=key, flight_only=flight_only, model_only=model
 ;oldkey - flag for old list of subscripts (use for backwards compatibility with previous COMSOL models)
 ;flight_only - only plot flight data
 ;model_only - only plot model points (NOT IMPLEMENTED)
-;search - a four character string which will be used to filter the temperature sensor keys for a final plot
-;   example (search = 'T1**')
+;cross - a four character string which will be used to filter the temperature sensor keys for a final plot
+;   example (cross = 'T1**')
 
 ;---Startup-------------------------------------
 
@@ -26,7 +26,12 @@ restore, 'data/flight/temp_data.idl'
 
 ;Read COMSOL output file to structure
 ctemp = read_comsol_temp('data/temp/'+filename, key)
-check_and_mkdir, sett.plotpath + 'temp/'
+
+tmp = strsplit(filename,'_',/extract)
+tmp = strjoin(tmp[1:n_elements(tmp)-1],'_')
+tmp = strsplit(tmp,'.',/extract)
+
+check_and_mkdir, sett.plotpath + 'temp/' + tmp[0]
 
 ;Get actual times from COMSOL output
 ctime = ctemp.time + 14d
@@ -41,288 +46,29 @@ xend   = 0.99
 yspace = 0.94
 ybuf   = 0.01
 
-;---Instrument Plots---------------------------------
+cross = ['T1**','T2**','T**1','T**5']
+prefix = ['inst','M1','Truss','M2']
 
-;Trim Flight Data
-sel  = where(strmatch(t.abbr,'OBB?'),ntemp)
-ss   = sort(t[sel].abbr)
-sel  = sel[ss]
-ftemp = adc_temp[sel,*]
-abbr = t[sel].abbr
+;---Standard Plots---------------------------------
 
-;--stripchart
-plotfile='inst_stripchart.eps'
-mkeps,name=sett.plotpath +'temp/'+ plotfile,aspect=2.5
-!P.Multi = [0, 1, ntemp]
-dy = yspace / ntemp
+foreach element, prefix, ind do begin
 
-for i=0,ntemp-1 do begin
-    ystart = 1 - (i+1) * dy
-    yend   = ystart + dy - ybuf
-    position = [xstart,ystart,xend,yend]
-    xtickname = replicate(' ',10)
-    if i eq ntemp-1 then xtickname=''
-    xtitle=''
-    if i eq ntemp-1 then xtitle='Time [hrs]'
-    plot,time,ftemp[i,*],ytitle=abbr[i]+' [C]',thick=2,charthick=2,xthick=2,ythick=2,$
-        position=position,xtickname=xtickname,xtitle=xtitle,/xs
-    
-    ;Match tag to structure
-    j = where(tag_names(ctemp) eq strupcase(strtrim(strjoin(strsplit(abbr[i],'-',/EXTRACT)),2)),ncomsol)
-    ;Plot COMSOL Data
-    if not keyword_set(flight_only) then begin
-        if ncomsol eq 1 then $
-        oplot,ctime, ctemp.(j)-273.15,psym=8
-    endif
-endfor
-
-mkeps,/close
-!P.Multi = 0
-print,'Wrote: '+sett.plotpath+'temp/'+plotfile
-
-;--Combined Plot
-plotfile='inst.eps'
-mkeps,name= sett.plotpath +'temp/'+ plotfile
-color=bytscl(dindgen(ntemp),top=254)
-loadct,39
-
-;Initialize Plot, symbols
-plot,time,ftemp[0,*],position=[0.12,0.12,0.84,0.94],yrange=[-40,40],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]'
-
-;Loop over key values
-for i=0,ntemp-1 do begin
-    ;Plot Remainder of flight data
-    oplot,time,ftemp[i,*],color=color[i],thick = 0.5
-
-    ;Match tag to structure
-    j = where(tag_names(ctemp) eq strupcase(strtrim(strjoin(strsplit(abbr[i],'-',/EXTRACT)),2)),ncomsol)
-    ;Plot COMSOL Data
-    if not keyword_set(flight_only) then begin
-        if ncomsol eq 1 then $
-        oplot,ctime, ctemp.(j)-273.15,color=color[i],psym=8
-    endif
-endfor
-
-cbmlegend,abbr,intarr(ntemp),color,[0.845,0.94],linsize=0.5
-mkeps,/close
-print,'Wrote: '+sett.plotpath+'temp/'+plotfile
-
-
-;---Primary Plots---------------------------------
-
-;Trim Flight Data
-sel  = where( (t.location eq 'Primary') AND (t.abbr NE 'MTR1') ,ntemp)
-ss   = sort(t[sel].abbr)
-sel  = sel[ss]
-ftemp = adc_temp[sel,*]
-abbr = t[sel].abbr
-
-;--stripchart
-plotfile='primary_stripchart.eps'
-mkeps,name=sett.plotpath +'temp/'+ plotfile,aspect=2.5
-!P.Multi = [0, 1, ntemp]
-dy = yspace / ntemp
-
-for i=0,ntemp-1 do begin
-    ystart = 1 - (i+1) * dy
-    yend   = ystart + dy - ybuf
-    position = [xstart,ystart,xend,yend]
-    xtickname = replicate(' ',10)
-    if i eq ntemp-1 then xtickname=''
-    xtitle=''
-    if i eq ntemp-1 then xtitle='Time [hrs]'
-    plot,time,ftemp[i,*],ytitle=abbr[i]+' [C]',yrange=[-20,30],thick=2,charthick=2,xthick=2,ythick=2,$
-        position=position,xtickname=xtickname,xtitle=xtitle,/xs
-    
-    ;Match tag to structure
-    j = where(tag_names(ctemp) eq strupcase(strtrim(strjoin(strsplit(abbr[i],'-',/EXTRACT)),2)),ncomsol)
-    ;Plot COMSOL Data
-    if not keyword_set(flight_only) then begin
-        if ncomsol eq 1 then $
-        oplot,ctime, ctemp.(j)-273.15,psym=8
-    endif
-endfor
-
-mkeps,/close
-!P.Multi = 0
-print,'Wrote: '+sett.plotpath+'temp/'+plotfile
-
-;--Combined Plot
-plotfile='primary.eps'
-mkeps,name= sett.plotpath +'temp/'+ plotfile
-color=bytscl(dindgen(ntemp),top=254)
-loadct,39
-
-;Initialize Plot, symbols
-plot,time,ftemp[0,*],position=[0.12,0.12,0.84,0.94],yrange=[-20,30],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]'
-
-;Loop over key values
-for i=0,ntemp-1 do begin
-    ;Plot Remainder of flight data
-    oplot,time,ftemp[i,*],color=color[i],thick = 0.5
-
-    ;Match tag to structure
-    j = where(tag_names(ctemp) eq strupcase(strtrim(strjoin(strsplit(abbr[i],'-',/EXTRACT)),2)),ncomsol)
-    ;Plot COMSOL Data
-    if not keyword_set(flight_only) then begin
-        if ncomsol eq 1 then $
-        oplot,ctime, ctemp.(j)-273.15,color=color[i],psym=8
-    endif
-endfor
-
-cbmlegend,abbr,intarr(ntemp),color,[0.845,0.94],linsize=0.5
-mkeps,/close
-print,'Wrote: '+sett.plotpath+'temp/'+plotfile
-
-
-;---Truss Plots---------------------------------
-
-;Trim Flight Data
-sel  = where(t.location eq 'Truss' and not strmatch(t.abbr, 'OBM*'),ntemp)
-ss   = sort(t[sel].abbr)
-sel  = sel[ss]
-ftemp = adc_temp[sel,*]
-abbr = t[sel].abbr
-
-;--stripchart
-plotfile='truss_stripchart.eps'
-mkeps,name=sett.plotpath +'temp/'+ plotfile,aspect=2.5
-!P.Multi = [0, 1, ntemp]
-dy = yspace / ntemp
-
-for i=0,ntemp-1 do begin
-    ystart = 1 - (i+1) * dy
-    yend   = ystart + dy - ybuf
-    position = [xstart,ystart,xend,yend]
-    xtickname = replicate(' ',10)
-    if i eq ntemp-1 then xtickname=''
-    xtitle=''
-    if i eq ntemp-1 then xtitle='Time [hrs]'
-    plot,time,ftemp[i,*],ytitle=abbr[i]+' [C]',thick=2,charthick=2,xthick=2,ythick=2,$
-        position=position,xtickname=xtickname,xtitle=xtitle,/xs
-    
-    ;Match tag to structure
-    j = where(tag_names(ctemp) eq strupcase(strtrim(strjoin(strsplit(abbr[i],'-',/EXTRACT)),2)),ncomsol)
-    ;Plot COMSOL Data
-    if not keyword_set(flight_only) then begin
-        if ncomsol eq 1 then $
-        oplot,ctime, ctemp.(j)-273.15,psym=8
-    endif
-endfor
-
-mkeps,/close
-!P.Multi = 0
-print,'Wrote: '+sett.plotpath+'temp/'+plotfile
-
-;--Combined Plot
-plotfile='truss.eps'
-mkeps,name= sett.plotpath +'temp/'+ plotfile
-color=bytscl(dindgen(ntemp),top=254)
-loadct,39
-
-;Initialize Plot
-plot,time,ftemp[0,*],position=[0.12,0.12,0.84,0.94],yrange=[-60,30],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]'
-
-;Loop over key values
-for i=0,ntemp-1 do begin
-    ;Plot Remainder of flight data
-    oplot,time,ftemp[i,*],color=color[i],thick = 0.5
-
-    ;Match tag to structure
-    j = where(tag_names(ctemp) eq strupcase(strtrim(strjoin(strsplit(abbr[i],'-',/EXTRACT)),2)))
-    ;Plot COMSOL Data
-    if not keyword_set(flight_only) then begin
-        oplot,ctime, ctemp.(j)-273.15,color=color[i],psym=8
-    endif
-endfor
-
-cbmlegend,abbr,intarr(ntemp),color,[0.845,0.94],linsize=0.5
-mkeps,/close
-print,'Wrote: '+sett.plotpath+'temp/'+plotfile
-
-;---Secondary Plots---------------------------------
-
-;Trim Flight Data
-sel  = where( strmatch(t.abbr,'M2??') ,ntemp)
-ss   = sort(t[sel].abbr)
-sel  = sel[ss]
-ftemp = adc_temp[sel,*]
-abbr = t[sel].abbr
-
-;--stripchart
-plotfile='secondary_stripchart.eps'
-mkeps,name=sett.plotpath +'temp/'+ plotfile,aspect=2.5
-!P.Multi = [0, 1, ntemp]
-dy = yspace / ntemp
-
-for i=0,ntemp-1 do begin
-    ystart = 1 - (i+1) * dy
-    yend   = ystart + dy - ybuf
-    position = [xstart,ystart,xend,yend]
-    xtickname = replicate(' ',10)
-    if i eq ntemp-1 then xtickname=''
-    xtitle=''
-    if i eq ntemp-1 then xtitle='Time [hrs]'
-    plot,time,ftemp[i,*],ytitle=abbr[i]+' [C]',thick=2,charthick=2,xthick=2,ythick=2,$
-        position=position,xtickname=xtickname,xtitle=xtitle,/xs
-    
-    ;Match tag to structure
-    j = where(tag_names(ctemp) eq strupcase(strtrim(strjoin(strsplit(abbr[i],'-',/EXTRACT)),2)),ncomsol)
-    ;Plot COMSOL Data
-    if not keyword_set(flight_only) then begin
-        if ncomsol eq 1 then $
-        oplot,ctime, ctemp.(j)-273.15,psym=8
-    endif
-endfor
-
-mkeps,/close
-!P.Multi = 0
-print,'Wrote: '+sett.plotpath+'temp/'+plotfile
-
-;--Combined Plot
-plotfile='secondary.eps'
-mkeps,name= sett.plotpath +'temp/'+ plotfile
-color=bytscl(dindgen(ntemp),top=254)
-loadct,39
-
-;Initialize Plot, symbols
-plot,time,ftemp[0,*],position=[0.12,0.12,0.84,0.94],yrange=[-50,30],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]'
-
-;Loop over key values
-for i=0,ntemp-1 do begin
-    ;Plot Remainder of flight data
-    oplot,time,ftemp[i,*],color=color[i],thick = 0.5
-
-    ;Match tag to structure
-    j = where(tag_names(ctemp) eq strupcase(strtrim(strjoin(strsplit(abbr[i],'-',/EXTRACT)),2)),ncomsol)
-    ;Plot COMSOL Data
-    if not keyword_set(flight_only) then begin
-        if ncomsol eq 1 then $
-        oplot,ctime, ctemp.(j)-273.15,color=color[i],psym=8
-    endif
-endfor
-
-cbmlegend,abbr,intarr(ntemp),color,[0.845,0.94],linsize=0.5
-mkeps,/close
-print,'Wrote: '+sett.plotpath+'temp/'+plotfile
-
-;---Search Plot-------------------------------------------
-
-if keyword_set(search) then begin
-    if not strmatch(search, '????') then print, 'Search not set to 4 character string' else begin
-    
-    filename = search.Replace('*','x')
+    case ind of
+        0: sel  = where(strmatch(t.abbr,'OBB?') or strmatch(t.abbr,'OBM?'),ntemp)   ;Inst
+        1: sel  = where( (t.location eq 'Primary') AND (t.abbr NE 'MTR1') ,ntemp)   ;M1
+        2: sel  = where(t.location eq 'Truss' and not strmatch(t.abbr, 'OBM*'),ntemp)  ;Truss
+        3: sel  = where( strmatch(t.abbr,'M2??') ,ntemp)
+    endcase
 
     ;Trim Flight Data
-    sel  = where( strmatch(t.abbr,search) ,ntemp)
     ss   = sort(t[sel].abbr)
     sel  = sel[ss]
     ftemp = adc_temp[sel,*]
     abbr = t[sel].abbr
 
     ;--stripchart
-    plotfile= filename + '_stripchart.eps'
-    mkeps,name=sett.plotpath +'temp/'+ plotfile,aspect=2.5
+    plotfile= element + '_stripchart.eps'
+    mkeps,name=sett.plotpath +'temp/'+ tmp[0] + '/' + plotfile,aspect=2.5
     !P.Multi = [0, 1, ntemp]
     dy = yspace / ntemp
 
@@ -348,11 +94,83 @@ if keyword_set(search) then begin
 
     mkeps,/close
     !P.Multi = 0
-    print,'Wrote: '+sett.plotpath+'temp/'+plotfile
+    print,'Wrote: '+sett.plotpath+'temp/'+tmp[0] + '/' +plotfile
+
+    ;--Combined Plot
+    plotfile= element + '.eps'
+    mkeps,name= sett.plotpath +'temp/'+ tmp[0] + '/' + plotfile
+    color=bytscl(dindgen(ntemp),top=254)
+    loadct,39
+
+    ;Initialize Plot, symbols
+    plot,time,ftemp[0,*],position=[0.12,0.12,0.84,0.94],yrange=[-40,40],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]'
+
+    ;Loop over key values
+    for i=0,ntemp-1 do begin
+        ;Plot Remainder of flight data
+        oplot,time,ftemp[i,*],color=color[i],thick = 0.5
+
+        ;Match tag to structure
+        j = where(tag_names(ctemp) eq strupcase(strtrim(strjoin(strsplit(abbr[i],'-',/EXTRACT)),2)),ncomsol)
+        ;Plot COMSOL Data
+        if not keyword_set(flight_only) then begin
+            if ncomsol eq 1 then $
+            oplot,ctime, ctemp.(j)-273.15,color=color[i],psym=8
+        endif
+    endfor
+
+    cbmlegend,abbr,intarr(ntemp),color,[0.845,0.94],linsize=0.5
+    mkeps,/close
+    print,'Wrote: '+sett.plotpath+'temp/'+tmp[0] + '/' +plotfile
+
+endforeach
+
+;---Search Plots-------------------------------------------
+
+foreach element, cross, ind do begin
+    
+    filename = element.Replace('*','x')
+
+    ;Trim Flight Data
+    sel  = where( strmatch(t.abbr,element) ,ntemp)
+    ss   = sort(t[sel].abbr)
+    sel  = sel[ss]
+    ftemp = adc_temp[sel,*]
+    abbr = t[sel].abbr
+
+    ;--stripchart
+    plotfile= filename + '_stripchart.eps'
+    mkeps,name=sett.plotpath +'temp/'+ tmp[0] + '/' +plotfile,aspect=2.5
+    !P.Multi = [0, 1, ntemp]
+    dy = yspace / ntemp
+
+    for i=0,ntemp-1 do begin
+        ystart = 1 - (i+1) * dy
+        yend   = ystart + dy - ybuf
+        position = [xstart,ystart,xend,yend]
+        xtickname = replicate(' ',10)
+        if i eq ntemp-1 then xtickname=''
+        xtitle=''
+        if i eq ntemp-1 then xtitle='Time [hrs]'
+        plot,time,ftemp[i,*],ytitle=abbr[i]+' [C]',thick=2,charthick=2,xthick=2,ythick=2,$
+            position=position,xtickname=xtickname,xtitle=xtitle,/xs
+        
+        ;Match tag to structure
+        j = where(tag_names(ctemp) eq strupcase(strtrim(strjoin(strsplit(abbr[i],'-',/EXTRACT)),2)),ncomsol)
+        ;Plot COMSOL Data
+        if not keyword_set(flight_only) then begin
+            if ncomsol eq 1 then $
+            oplot,ctime, ctemp.(j)-273.15,psym=8
+        endif
+    endfor
+
+    mkeps,/close
+    !P.Multi = 0
+    print,'Wrote: '+sett.plotpath+'temp/'+tmp[0] + '/' +plotfile
 
     ;--Combined Plot
     plotfile= filename + '.eps'
-    mkeps,name= sett.plotpath +'temp/'+ plotfile
+    mkeps,name= sett.plotpath +'temp/'+ tmp[0] + '/' +plotfile
     color=bytscl(dindgen(ntemp),top=254)
     loadct,39
 
@@ -375,10 +193,8 @@ if keyword_set(search) then begin
 
     cbmlegend,abbr,intarr(ntemp),color,[0.845,0.94],linsize=0.5
     mkeps,/close
-    print,'Wrote: '+sett.plotpath+'temp/'+plotfile
+    print,'Wrote: '+sett.plotpath+'temp/'+tmp[0] + '/' +plotfile
 
-    endelse
-
-endif
+endforeach
 
 end
