@@ -1,4 +1,4 @@
-pro plot_temp_comp, filename, key=key, flight_only=flight_only, model_only=model_only
+pro plot_temp_comp, filename, key=key, flight_only=flight_only, model_only=model_only, start=start
 
 ;Plots flight 1 data and COMSOL simulation temperature data for comparison
 ;The majority of this code is adapted from plot_flight_temp.pro in the picctest repository
@@ -34,7 +34,8 @@ tmp = strsplit(tmp,'.',/extract)
 check_and_mkdir, sett.plotpath + 'temp/' + tmp[0]
 
 ;Get actual times from COMSOL output
-ctime = ctemp.time + 14d
+if not keyword_set(start) then start = 14
+ctime = ctemp.time + start
 
 ;Filled circle symbol
 symbol_arr = FINDGEN(17) * (!PI*2/16.)
@@ -154,7 +155,6 @@ foreach element, cross, ind do begin
         if i eq ntemp-1 then xtitle='Time [hrs]'
         plot,time,ftemp[i,*],ytitle=abbr[i]+' [C]',thick=2,charthick=2,xthick=2,ythick=2,$
             position=position,xtickname=xtickname,xtitle=xtitle,/xs
-        
         ;Match tag to structure
         j = where(tag_names(ctemp) eq strupcase(strtrim(strjoin(strsplit(abbr[i],'-',/EXTRACT)),2)),ncomsol)
         ;Plot COMSOL Data
