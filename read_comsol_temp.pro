@@ -40,7 +40,11 @@ struct_base = {Time: 0d,$     ;Keys for temperature probes
                 T21: 0d,$
                 T31: 0d,$
                 T11: 0d,$
-                T41: 0d}
+                T41: 0d,$
+                STB1: 0d,$
+                STB2: 0d,$
+                STB3: 0d,$
+                STB4: 0d}
 
 ;Read table
 case key of
@@ -66,6 +70,11 @@ case key of
     end
     4: begin
         readcol, file, time,T25,T15,T24,OBM2,T14,T23,T13,T22,OBM3,T12,T21,OBM1,T35,T11,T45,T34,M2PL, $
+        T44,T33,T43,T32,T42,T31,T41,OBB2,OBB3,OBB1,M1B1,M1P1,M1P2,M1B2,M1B3,M1P3,M1G1,M1G2,M1G3,M2GL, $
+        comment='%', FORMAT = 'D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D'
+    end
+    5: begin
+        readcol, file, time,STB2,T25,STB1,T15,T24,OBM2,T14,T23,T13,T22,OBM3,T12,T21,OBM1,T35,STB3,T11,T45,STB4,T34,M2PL, $
         T44,T33,T43,T32,T42,T31,T41,OBB2,OBB3,OBB1,M1B1,M1P1,M1P2,M1B2,M1B3,M1P3,M1G1,M1G2,M1G3,M2GL, $
         comment='%', FORMAT = 'D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D'
     end
@@ -116,7 +125,17 @@ struct_full[*].m1g2 = m1g2
 struct_full[*].m1g3 = m1g3
 struct_full[*].m2pl = m2pl
 struct_full[*].m2gl = m2gl
-;struct_full[*].m2bk = m2bk
+
+if key EQ 1 then begin
+    struct_full[*].m2bk = m2bk
+endif
+
+if key GE 5 then begin
+    struct_full[*].STB1 = STB1
+    struct_full[*].STB2 = STB2
+    struct_full[*].STB3 = STB3
+    struct_full[*].STB4 = STB4
+endif
 
 return, struct_full
 
