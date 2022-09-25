@@ -42,7 +42,7 @@ endif else base_data = vec1
 
 ;Initial guess
 case key of
-    'M1': guess = [90d,0d,0d,0d,0d]
+    'M1': guess = [90d,0d,0.5d,0d,0.3d]
     'M2': guess = [-90d,0d,0d,0d,0d]
     else: begin
         print, 'No matching initial guess string'
@@ -53,8 +53,15 @@ endcase
 ;Find initial coordinates of parent
 base_sol = fit_conic(base_data, roc, conic,guess=guess)
 
-if not keyword_set(quiet) then $
-print, 'RMS Distance from Base Fit: '+n2s(1000*SQRT(base_sol[5]/n_elements(x)))+' mm'
+if not keyword_set(quiet) then begin
+    print, '--Initial Position Vector' 
+    print, 'Rx (deg): ' + n2s(base_sol[0])
+    print, 'Rz (deg): ' + n2s(base_sol[1])
+    print, 'X (m): ' + n2s(base_sol[2])
+    print, 'Y (m): ' + n2s(base_sol[3])
+    print, 'Z (m): ' + n2s(base_sol[4])
+    print, 'RMS Distance from Base Fit: '+n2s(1000*SQRT(base_sol[5]/n_elements(x)))+' mm'
+endif
 
 ;Transform base conic to local coords
 base_local = rotate_displace(base_data,base_sol[0],0,base_sol[1],base_sol[2:4],/INVERSE)
@@ -67,7 +74,7 @@ disp_local = rotate_displace(disp_global,base_sol[0],0,base_sol[1],[0,0,0],/INVE
 disp_sol = fit_conic(base_local+disp_local, roc, conic)
 
 if not keyword_set(quiet) then begin
-    print, '--Displacement Vector' 
+    print, '--Displacement Vector (in Initial Frame)' 
     print, 'Rx (deg): ' + n2s(disp_sol[0])
     print, 'Rz (deg): ' + n2s(disp_sol[1])
     print, 'X (m): ' + n2s(disp_sol[2])

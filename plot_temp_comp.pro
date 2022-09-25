@@ -49,6 +49,7 @@ ybuf   = 0.01
 
 cross = ['T1**','T2**','T**1','T**5']
 prefix = ['inst','M1','Truss','M2']
+stb = ['STB1','STB2','STB3','STB4']
 
 ;---Standard Plots---------------------------------
 
@@ -202,7 +203,7 @@ foreach element, cross, ind do begin
     endif
 
     if element eq 'T**5' then $
-        cbmlegend,[abbr,'STB1','STB2','STB3','STB4'],intarr(ntemp+4),color,[0.845,0.94],linsize=0.5 else $
+        cbmlegend,[abbr,stb],intarr(ntemp+4),color,[0.845,0.94],linsize=0.5 else $
         cbmlegend,abbr,intarr(ntemp),color,[0.845,0.94],linsize=0.5
     mkeps,/close
     print,'Wrote: '+sett.plotpath+'temp/'+tmp[0] + '/' +plotfile

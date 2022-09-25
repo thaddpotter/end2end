@@ -107,6 +107,9 @@ ftol = 1e-8
 Powell, guess, gi,ftol,fmin, 'dist_min'
 
 if not keyword_set(quiet) then begin
+    print, 'Displacement in x: ' + n2s(translate[0])
+    print, 'Displacement in y: ' + n2s(translate[1])
+    print, 'Displacement in z: ' + n2s(translate[2])
     print, 'Rotation about x: ' + n2s(guess[0])
     print, 'Rotation about y: ' + n2s(guess[1])
     print, 'Rotation about z: ' + n2s(guess[2])
