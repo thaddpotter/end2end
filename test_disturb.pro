@@ -1,4 +1,27 @@
 pro test_disturb
+;---------------------------------------------------------------------------------
+;;Test procedure for converting optical prescription and STOP data into:
+;(1) a set of 6-D displacements, and map of residuals usable by ZEMAX
+;(2) an updated csv prescription file readable by PICCSIM?
+;-------------------------------------------------------------------------------
+;Required Data Files:
+;COMSOL surface data table for the three main test surfaces: M1, M2, and the Optical Bench
+;Piccsim prescription csv file
+;Matching Zemax prescription report
+;   format TBD
+;------------------------------------------------------------------------------
+;;Arguments:
+;
+;-------------------------------------------------------------------------------
+;;Keywords
+;
+;-------------------------------------------------------------------------------
+;;Outputs
+;
+
+;error maps?
+
+;---------------------------------------------------------------------------------
 
 ;Load Settings Block
 sett = e2e_load_settings()
@@ -11,16 +34,24 @@ cd, sett.datapath+'stop/'
 ;Initialize structures
 data_struct = {m1:'',$
                m2:'',$
-               bench:''}
+               bench:'' $
+               }
 
 optics = {name: tag_names(data_struct),$
-                roc: [3.048d, 0.508d],$           ;IN METERS
-                conic: [-1.0d, -0.422335d]}
+          roc: [3.048d, 0.508d],$           ;IN METERS
+          conic: [-1.0d, -0.422335d] $
+          }
 
-out_struct = {fit: dblarr(7),$
-              disp: dblarr(7)}
+fit_struct = {fit: '',$
+              resid: '' $
+              }
 
-out = REPLICATE( out_struct,n_elements(optics.name) + 1)  
+out = data_struct
+
+;Coordinate registration data
+;TODO: GET REAL REGISTRATION DATA
+coord_reg = identity(3)
+zemax_reg = transform_3d(coord_reg, [45d,10d,-25d], [0d,0d,0d],/center)
 
 ;Read in COMSOL Data
 count = 0
@@ -38,7 +69,6 @@ foreach element, optics.name, ind do begin
     endcase 
 endforeach
 
-
 ;---Generate Test displacement data-----
 
 disp_mat = dblarr(6,3)
@@ -48,8 +78,8 @@ foreach element, optics.name, ind do begin
     angle = 2d * randomu(seed, 3, /double)
     ;Choose random bulk displacement | < 5 mm
     disp = 5d-3 * randomu(seed, 3, /double)
-    ;Choose Random Residuals | Abs < 1 um
-    resid = 0.5d-7 + 1d-6 * randomu(seed, 3, n_elements(data_struct.(ind).(3)), /double)
+    ;Choose Random Residuals | Abs < 10 um
+    resid = 0.5d-6 + 1d-5 * randomu(seed, 3, n_elements(data_struct.(ind).(3)), /double)
     disp_mat[*,ind] = [angle, disp]
 
     init_points = TRANSPOSE([[data_struct.(ind).(0)],[data_struct.(ind).(1)],[data_struct.(ind).(2)]])
@@ -66,36 +96,52 @@ foreach element, optics.name, ind do begin
 
 endforeach
 
+;---Convert to Zemax Global Frame------------------------
+
+foreach element, optics.name, ind do begin
+    ;Find transform
+    conv = fit_transform(coord_reg,zemax_reg)
+
+    ;check rotation angles against comsol inputs
+
+
+    ;Convert coordinates
+    zminit = TRANSPOSE([[data_struct.(ind).(0)],[data_struct.(ind).(1)],[data_struct.(ind).(2)]])
+    zmdisps = TRANSPOSE([[data_struct.(ind).(3)],[data_struct.(ind).(4)],[data_struct.(ind).(5)]])      
+
+    zmcoords =  transpose([transform_3d(zminit, conv[0:2], conv[3:5], /center), $
+                 transform_3d(zmdisps, conv[0:2], [0d,0d,0d], /center)]) ;Only rotate the the displacement vectors
+
+    ;Replace data fields
+    tmp_struct = data_struct.(ind)
+    foreach tag, ['x','Y','Z','U1','V1','W1'], i do begin
+        tmp = zmcoords[*,i]
+        struct_replace_field, tmp_struct, tag, zmcoords[*,i]
+    endforeach
+    struct_replace_field,data_struct,element,tmp_struct
+
+endforeach
 
 ;---Calculate Displacements------------------------------
 
+foreach element, optics.name, ind do begin
 
-;--Mirrors---------------------------------------------------
-foreach element, optics.name[0:1], ind do begin
-    if typename(data_struct.(ind)) EQ 'STRING' then print, '--Skipping '+element+'...' else begin
+    init = TRANSPOSE([[data_struct.(ind).(0)],[data_struct.(ind).(1)],[data_struct.(ind).(2)]])
+    dist = init + TRANSPOSE([[data_struct.(ind).(3)],[data_struct.(ind).(4)],[data_struct.(ind).(5)]])
 
-        print, '--Calculating Displacement for ' + element
-        tmp_struct = data_struct.(ind)
-        
-        mirror_sol = calc_mirror_displace(tmp_struct, optics.roc[ind], optics.conic[ind], element, quiet=quiet)
+    ;Fit parameters
+    fit = fit_transform(init, dist)
+    struct_replace_field, fit_struct, 'fit', fit
 
-        out[ind].fit = mirror_sol[*,0]
-        out[ind].disp = mirror_sol[*,1]
+    ;Get residuals
+    resid = transform_3d(init, fit[0:2], fit[3:5], /center) - dist
+    struct_replace_field, fit_struct, 'resid', resid
 
-        stop
-    endelse
+    ;Write to output
+    struct_replace_field, out, element, fit_struct
+
 endforeach
 
 stop
-
-
-;foreach element, optics.name, ind do begin
-;
-;    init = TRANSPOSE([[data_struct.(ind).(0)],[data_struct.(ind).(1)],[data_struct.(ind).(2)]])
-;    dist = init + TRANSPOSE([[data_struct.(ind).(3)],[data_struct.(ind).(4)],[data_struct.(ind).(5)]])
-;
-;    a = fit_transform(init, dist)
-;
-;endforeach
 
 end
