@@ -23,13 +23,13 @@ pro test_disturb
 
 ;---------------------------------------------------------------------------------
 
+
+;---Startup----------------------------
 ;Load Settings Block
 sett = e2e_load_settings()
 
 ;Change WD to STOP data folder
 cd, sett.datapath+'stop/'
-
-;---Read COMSOL data---------------------
 
 ;Initialize structures
 data_struct = {m1:'',$
@@ -48,12 +48,7 @@ fit_struct = {fit: '',$
 
 out = data_struct
 
-;Coordinate registration data
-;TODO: GET REAL REGISTRATION DATA
-coord_reg = identity(3)
-zemax_reg = transform_3d(coord_reg, [45d,10d,-25d], [0d,0d,0d],/center)
-
-;Read in COMSOL Data
+;---Read COMSOL Surface data---------------------
 count = 0
 foreach element, optics.name, ind do begin
     ;Find file that contains keyword
@@ -68,6 +63,22 @@ foreach element, optics.name, ind do begin
         else: print, 'Error, more than one file matching: ' + element
     endcase 
 endforeach
+
+;COMSOL Registration Points
+coord_reg = identity(3)
+
+;---Read Zemax prescription data--------------
+;;TODO:
+;Vertex Coordinates in Global
+;Coordinate registration points
+
+;Read prescription report
+
+
+
+zemax_reg = transform_3d(coord_reg, [45d,10d,-25d], [0d,0d,0d],/center)
+
+
 
 ;---Generate Test displacement data-----
 
