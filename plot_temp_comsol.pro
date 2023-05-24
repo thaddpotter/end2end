@@ -22,10 +22,10 @@ pro plot_temp_comsol, filename, key=key, flight_only=flight_only, model_only=mod
 sett = e2e_load_settings()
 
 ;Restore flight data from picctest
-restore, 'data/flight/temp_data.idl'
+restore, sett.path + 'data/flight/picture_c1_temp_data.idl'
 
 ;Read COMSOL output file to structure
-ctemp = read_comsol_temp('data/temp/'+filename, key)
+ctemp = read_comsol_temp(sett.path + 'data/temp/' + filename, key)
 
 tmp = strsplit(filename,'_',/extract)
 tmp = strjoin(tmp[1:n_elements(tmp)-1],'_')
