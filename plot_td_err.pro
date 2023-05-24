@@ -1,4 +1,4 @@
-pro plot_td_err, file,
+pro plot_td_err
 ;Plots comparisons of 
 
 ;Setup
@@ -11,7 +11,7 @@ meas_file = sett.tdpath + 'tsense_data/tsense_f1.txt'
 ;Read in Data
 ;------------------------------------;
 data_struct = read_td_corr(file,measure_file=meas_file)     ;TD Correlation Data
-restore, sett.path + 'data/flight/temp_data.idl'          ;Flight Data
+restore, sett.path + 'data/flight/picture_c1_temp_data.idl'          ;Flight Data
 
 stop
 

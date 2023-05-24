@@ -113,7 +113,8 @@ if keyword_set(measure_file) then begin
 
     for i = 2,n_elements(key_arr)/2 + 1 do begin
         tag = key_arr[i-2,1]
-        struct_replace_field, struct_full, tag, struct_full.(tag), newtag = key_arr[i-2,0]
+        newtag = key_arr[i-2,0]
+        struct_replace_field, struct_full, tag, struct_full.(i), newtag = newtag
     endfor
 endif
 
