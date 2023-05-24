@@ -1,4 +1,4 @@
-pro plot_temp_comp, filename, key=key, flight_only=flight_only, model_only=model_only, start=start
+pro plot_temp_comsol, filename, key=key, flight_only=flight_only, model_only=model_only, start=start
 
 ;Plots flight 1 data and COMSOL simulation temperature data for comparison
 ;The majority of this code is adapted from plot_flight_temp.pro in the picctest repository

@@ -10,6 +10,7 @@ function e2e_load_settings
   datapath = path + 'data/'                ;;Path to data directory
   outpath = path + 'output/'               ;;Path to output directory
   plotpath = path + 'plots/'               ;;Path to plots directory
+  tdpath = '/mnt/c/Users/locsst/Desktop/TD_picture_working/'     ;;Path to Thermal Desktop Directory
 
   ;;Exotargets Parameters
   exo = {$
@@ -44,7 +45,8 @@ function e2e_load_settings
     path:path, $                           
     datapath:datapath,$                    
     outpath:outpath,$
-    plotpath:plotpath,$                       
+    plotpath:plotpath,$
+    tdpath:tdpath,$                       
 
     exo: exo, $
     picc:picc $
