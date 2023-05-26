@@ -69,8 +69,8 @@ foreach element, prefix, ind do begin
     abbr = t[sel].abbr
 
     ;--stripchart
-    plotfile= element + '_stripchart.eps'
-    mkeps,name=sett.plotpath +'temp/'+ tmp[0] + '/' + plotfile,aspect=2.5
+    plotfile= element + '_stripchart'
+    mkeps,sett.plotpath +'temp/'+ tmp[0] + '/' + plotfile,aspect=2.5
     !P.Multi = [0, 1, ntemp]
     dy = yspace / ntemp
 
@@ -99,8 +99,8 @@ foreach element, prefix, ind do begin
     print,'Wrote: '+sett.plotpath+'temp/'+tmp[0] + '/' +plotfile
 
     ;--Combined Plot
-    plotfile= element + '.eps'
-    mkeps,name= sett.plotpath +'temp/'+ tmp[0] + '/' + plotfile
+    plotfile= element
+    mkeps, sett.plotpath +'temp/'+ tmp[0] + '/' + plotfile
     color=bytscl(dindgen(ntemp),top=254)
     loadct,39
 
@@ -141,8 +141,8 @@ foreach element, cross, ind do begin
     abbr = t[sel].abbr
 
     ;--stripchart
-    plotfile= filename + '_stripchart.eps'
-    mkeps,name=sett.plotpath +'temp/'+ tmp[0] + '/' +plotfile,aspect=2.5
+    plotfile= filename + '_stripchart'
+    mkeps,sett.plotpath +'temp/'+ tmp[0] + '/' +plotfile,aspect=2.5
     !P.Multi = [0, 1, ntemp]
     dy = yspace / ntemp
 
@@ -170,8 +170,8 @@ foreach element, cross, ind do begin
     print,'Wrote: '+sett.plotpath+'temp/'+tmp[0] + '/' +plotfile
 
     ;--Combined Plot
-    plotfile= filename + '.eps'
-    mkeps,name= sett.plotpath +'temp/'+ tmp[0] + '/' +plotfile
+    plotfile= filename
+    mkeps, sett.plotpath +'temp/'+ tmp[0] + '/' +plotfile
 
     if element eq 'T**5' then $
         color=bytscl(dindgen(ntemp+4),top=254) else $

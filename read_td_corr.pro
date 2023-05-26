@@ -19,7 +19,7 @@ endfor
 return, id_arr
 end
 
-function read_td_corr, dlo_file, measure_file=measure_file
+function read_td_corr, dlo_file, measure_file=measure_file, twoD=twoD
 ;Reads correlation *.dlo files from Dynamic SINDA Runs
 ;TODO: How to structure this for multiple loops, and comparing data over time?
 
@@ -71,7 +71,7 @@ readcol, dlo_file, time, LOOPCT,TC_1,TC_2,TC_3,TC_4,TC_5,TC_6,TC_7,TC_8, $
 struct_full = replicate(struct_base,n_elements(time))
 
 ;Fill output structure
-struct_full[*].time = time
+struct_full[*].time = roundn(time,3)
 struct_full[*].loopct = loopct
 struct_full[*].TC_1 = TC_1
 struct_full[*].TC_2 = TC_2
@@ -107,7 +107,7 @@ struct_full[*].TC_31 = TC_31
 struct_full[*].TC_32 = TC_32
 struct_full[*].err = err
 
-;Rename field to temperature sensors
+;Rename fields to temperature sensors
 if keyword_set(measure_file) then begin
     key_arr = read_td_measure(measure_file)
 
@@ -117,6 +117,27 @@ if keyword_set(measure_file) then begin
         struct_replace_field, struct_full, tag, struct_full.(i), newtag = newtag
     endfor
 endif
+
+;Convert to 2-D over iterations
+if keyword_set(twoD) then begin
+
+    ;Get unique time values
+    times = struct_full.time[sort(struct_full.time)]
+    
+
+    ;Loop over sensors
+    for i = 2,n_elements(key_arr)/2 do begin
+
+        stop
+    endfor
+    
+
+
+
+
+
+endif
+
 
 return, struct_full
 end
