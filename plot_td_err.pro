@@ -19,7 +19,7 @@ meas_file = sett.tdpath + 'tsense_data/tsense_f1.txt'
 
 ;Read in Data
 ;------------------------------------;
-data_struct = read_td_corr(file,measure_file=meas_file,/twoD)              ;TD Correlation Data
+data_struct = read_td_corr(file,measure_file=meas_file)              ;TD Correlation Data
 restore, sett.path + 'data/flight/picture_c1_temp_data.idl'          ;Flight Data
 
 newtag = strarr(n_elements(t.abbr))                                  ;Remove '-' from tags
@@ -46,14 +46,16 @@ tmax = max(data_struct.time)/3600d + tmin
 ;Directory
 check_and_mkdir, sett.plotpath + dir
 
-;Time array for TD Datapoints
-tdt = tmin + data_struct.time/3600d
+;Sensors to iterate over
+prefix = tag_names(data_struct)
+prefix = prefix[2:n_elements(prefix)-2]
 
-;Filled circle symbol
-symbol_arr = FINDGEN(17) * (!PI*2/16.)
-usersym, cos(symbol_arr), sin(symbol_arr), thick=0.5
-
-stop 
+;String array for legend
+ntemp = max(data_struct.loopct)+1
+leg = strarr(ntemp+1)
+leg[0] = 'Flight'
+for i = 1, ntemp do $
+    leg[i] = 'Iter ' + n2s(i-1)
 
 ;Loop over all sensors in the list
 foreach element, prefix, ind do begin
@@ -62,10 +64,21 @@ foreach element, prefix, ind do begin
     sel  = where(strmatch(newtag,element))
 
     ;Trim Flight Data to correct sensor
-    ss   = sort(t[sel].abbr)
-    sel  = sel[ss]
-    ftemp = adc_temp[sel,*]
-    abbr = t[sel].abbr
+    if sel LE 0 then begin
+    ;If theres no match, average over the numbered sensors with the same name
+        string2 = element.substring(0,2) + '?'
+        sel  = where(strmatch(newtag,string2))
+        ss   = sort(t[sel].abbr)
+        sel  = sel[ss]
+        ftemp = mean(adc_temp[sel,*],dimension=1,/DOUBLE)
+        abbr = element
+    endif else begin
+        ss   = sort(t[sel].abbr)
+        sel  = sel[ss]
+        ftemp = adc_temp[sel,*]
+        abbr = t[sel].abbr
+    endelse
+    ;CASE WHERE (M1B...) temps averaged over sensors?
 
     ;Trim flight data by time
     sel2 = where(time GE tmin AND time LE tmax)
@@ -75,25 +88,32 @@ foreach element, prefix, ind do begin
     ;Plot
     plotfile= element
     mkeps, sett.plotpath + dir + plotfile
-    color=bytscl(dindgen(ntemp),top=254)
+
+    ;Color Settings
+    color=bytscl(dindgen(ntemp+1),top=254)
     loadct,39
 
     ;Initialize Plot, symbols
-    plot,tt,ftemp[0,*],position=[0.12,0.12,0.84,0.94],yrange=[-40,40],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]'
+    plot,tt,ftemp[0,*],position=[0.12,0.12,0.84,0.94],yrange=[-80,30],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]',color=color[0],Title = element
 
-    ;Loop over iterations
+    ;Match tag to structure
+    j = where(tag_names(data_struct) eq strupcase(strtrim(strjoin(strsplit(abbr,'-',/EXTRACT)),2)),ntd)
+
+    ;Loop over TD iterations
     for i=0,ntemp-1 do begin
 
-        ;Match tag to structure
-        j = where(tag_names(data_struct) eq strupcase(strtrim(strjoin(strsplit(abbr[i],'-',/EXTRACT)),2)),ntd)
+        ;Trim to loop
+        tdt = data_struct.time[where(data_struct.loopct EQ i)]/3600d + tmin
+        tmp = data_struct.(j)[where(data_struct.loopct EQ i)]
+        
         ;Plot TD Data
         if not keyword_set(flight_only) then begin
             if ntd eq 1 then $
-            oplot,tdt, data_struct.(j)-273.15,color=color[i],psym=8
+            oplot,tdt, tmp-273.15,color=color[i+1]
         endif
     endfor
 
-    cbmlegend,abbr,intarr(ntemp),color,[0.845,0.94],linsize=0.5
+    cbmlegend,leg,intarr(ntemp+1),color,[0.845,0.94],linsize=0.5
     mkeps,/close
     print,'Wrote: '+ sett.plotpath + dir + plotfile
 

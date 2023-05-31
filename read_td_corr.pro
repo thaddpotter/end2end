@@ -19,9 +19,8 @@ endfor
 return, id_arr
 end
 
-function read_td_corr, dlo_file, measure_file=measure_file, twoD=twoD
+function read_td_corr, dlo_file, measure_file=measure_file
 ;Reads correlation *.dlo files from Dynamic SINDA Runs
-;TODO: How to structure this for multiple loops, and comparing data over time?
 
 ;Define Structure
 struct_base = {time: 0d,$     ;Keys for temperature probes
@@ -62,11 +61,22 @@ struct_base = {time: 0d,$     ;Keys for temperature probes
                 err:0d}
 
 ;Read table
-readcol, dlo_file, time, LOOPCT,TC_1,TC_2,TC_3,TC_4,TC_5,TC_6,TC_7,TC_8, $
+readcol, dlo_file, time, loopct,TC_1,TC_2,TC_3,TC_4,TC_5,TC_6,TC_7,TC_8, $
                 TC_9,TC_10,TC_11,TC_12,TC_13,TC_14,TC_15,TC_16, $
                 TC_17,TC_18,TC_19,TC_20,TC_21,TC_22,TC_23,TC_24, $
                 TC_25,TC_26,TC_27,TC_28,TC_29,TC_30,TC_31,TC_32,err, $
                 FORMAT = 'D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D'
+
+;Fix Loopcount field
+sel1 = where(time EQ max(time),count1)
+sel2 = where(time EQ min(time),count2)
+for i = 0, count1 - 1 do begin
+    a = sel2[i]
+    b = sel1[i]
+    loopct[a:b] = i
+endfor
+if sel1[count1-1] LT n_elements(time) then $
+    loopct[b+1:n_elements(loopct)-1] = i  ;Incomplete loop at end
 
 struct_full = replicate(struct_base,n_elements(time))
 
@@ -117,27 +127,6 @@ if keyword_set(measure_file) then begin
         struct_replace_field, struct_full, tag, struct_full.(i), newtag = newtag
     endfor
 endif
-
-;Convert to 2-D over iterations
-if keyword_set(twoD) then begin
-
-    ;Get unique time values
-    times = struct_full.time[sort(struct_full.time)]
-    
-
-    ;Loop over sensors
-    for i = 2,n_elements(key_arr)/2 do begin
-
-        stop
-    endfor
-    
-
-
-
-
-
-endif
-
 
 return, struct_full
 end
