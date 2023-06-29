@@ -1,28 +1,26 @@
-pro plot_td_err,day=day,night=night
+pro plot_td_err,day=day,night=night, steady=steady, plotdir=plotdir
 ;Plots comparisons of thermal desktop data
 ;Arguments:
 ;dir - thermal desktop case set directory
 ;   Must contain a *.dlo file
 
 
-
-;TODO:
-;How to plot error over time for multiple iterations
-;Unroll, seperate plots?
-
 ;Setup
 ;-------------------------------------
 sett = e2e_load_settings()
 
-file = sett.tdpath + 'td_pm/night_correlation.dlo'
-meas_file = sett.tdpath + 'tsense_data/tsense_f1.txt'
+if keyword_set(steady) then $
+file = sett.tdpath + 'init_pm2/bootstrap_test2.dlo' else $
+file = sett.tdpath + 'td_pm/bootstrap_test.dlo'
+
+meas_file = sett.tdpath + 'tsense_data/tsense_f2.txt'
 
 ;Read in Data
 ;------------------------------------;
-data_struct = read_td_corr(file,measure_file=meas_file)              ;TD Correlation Data
-restore, sett.path + 'data/flight/picture_c1_temp_data.idl'          ;Flight Data
+data_struct = read_td_corr(file,measure_file=meas_file,steady=steady)   ;TD Correlation Data
+restore, sett.path + 'data/flight/picture_c1_temp_data.idl'             ;Flight Data
 
-newtag = strarr(n_elements(t.abbr))                                  ;Remove '-' from tags
+newtag = strarr(n_elements(t.abbr))                                     ;Remove '-' from tags
 for i = 0, n_elements(t.abbr)-1 do begin
     newtag[i] = strjoin(strsplit(t[i].abbr,'-',/EXTRACT))
 endfor
@@ -44,7 +42,7 @@ endelse
 tmax = max(data_struct.time)/3600d + tmin
 
 ;Directory
-check_and_mkdir, sett.plotpath + dir
+check_and_mkdir, sett.plotpath + dir + plotdir
 
 ;Sensors to iterate over
 prefix = tag_names(data_struct)
@@ -65,7 +63,7 @@ foreach element, prefix, ind do begin
 
     ;Trim Flight Data to correct sensor
     if sel LE 0 then begin
-    ;If theres no match, average over the numbered sensors with the same name
+    ;If theres no perfect match, average over the numbered sensors with the same name
         string2 = element.substring(0,2) + '?'
         sel  = where(strmatch(newtag,string2))
         ss   = sort(t[sel].abbr)
@@ -78,23 +76,46 @@ foreach element, prefix, ind do begin
         ftemp = adc_temp[sel,*]
         abbr = t[sel].abbr
     endelse
-    ;CASE WHERE (M1B...) temps averaged over sensors?
 
     ;Trim flight data by time
-    sel2 = where(time GE tmin AND time LE tmax)
-    tt = time[sel2]
-    ftemp = ftemp[*,sel2]
-
+    if keyword_set(steady) then begin
+        v = min(abs(time - tmin),sel2)
+    endif else begin
+        sel2 = where((time GE tmin) AND (time LE tmax))
+        tt = time[sel2]
+    endelse
+    ftemp = ftemp[sel2]
+    
     ;Plot
+    ;-------------------------------------------------------------------------
     plotfile= element
-    mkeps, sett.plotpath + dir + plotfile
+    mkeps, sett.plotpath + dir + plotdir + plotfile
+
+    ;Plot Steady State
+
+    if keyword_set(steady) then begin
+
+        n = n_elements(data_struct.time)
+        j = where(tag_names(data_struct) eq strupcase(strtrim(strjoin(strsplit(abbr,'-',/EXTRACT)),2)),ntd)
+        
+        ;Color Settings
+        color=bytscl(dindgen(2),top=254)
+        loadct,39
+
+        plot, indgen(n), replicate(ftemp,n), position=[0.12,0.12,0.84,0.94],yrange=[-80,30],/xs,/ys,xtitle='Iteration', ytitle='Temperature [C]', color=color[0], Title = element
+            
+        oplot,indgen(n), data_struct.(j)-273.15, color=color[1]
+
+        cbmlegend,['Flight', 'TD'],intarr(2),color,[0.845,0.94],linsize=0.5
+
+    endif else begin
 
     ;Color Settings
     color=bytscl(dindgen(ntemp+1),top=254)
     loadct,39
 
     ;Initialize Plot, symbols
-    plot,tt,ftemp[0,*],position=[0.12,0.12,0.84,0.94],yrange=[-80,30],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]',color=color[0],Title = element
+    plot,tt,ftemp,position=[0.12,0.12,0.84,0.94],yrange=[-80,30],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]',color=color[0],Title = element
 
     ;Match tag to structure
     j = where(tag_names(data_struct) eq strupcase(strtrim(strjoin(strsplit(abbr,'-',/EXTRACT)),2)),ntd)
@@ -114,8 +135,10 @@ foreach element, prefix, ind do begin
     endfor
 
     cbmlegend,leg,intarr(ntemp+1),color,[0.845,0.94],linsize=0.5
+    endelse
+
     mkeps,/close
-    print,'Wrote: '+ sett.plotpath + dir + plotfile
+    print,'Wrote: '+ sett.plotpath + dir + plotdir + plotfile
 
 endforeach
 end

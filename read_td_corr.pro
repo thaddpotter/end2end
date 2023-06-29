@@ -19,12 +19,11 @@ endfor
 return, id_arr
 end
 
-function read_td_corr, dlo_file, measure_file=measure_file
+function read_td_corr, dlo_file, measure_file=measure_file, steady=steady
 ;Reads correlation *.dlo files from Dynamic SINDA Runs
 
 ;Define Structure
 struct_base = {time: 0d,$     ;Keys for temperature probes
-                ;Out of order due to COMSOL geometric point ordering
                 LOOPCT: 0d,$
                 TC_1: 0d,$
                 TC_2: 0d,$
@@ -57,26 +56,29 @@ struct_base = {time: 0d,$     ;Keys for temperature probes
                 TC_29: 0d,$
                 TC_30: 0d,$
                 TC_31: 0d,$
-                TC_32: 0d,$
+;               TC_32: 0d,$ One less tag, leaving as comment in case I revert this before final
                 err:0d}
 
 ;Read table
 readcol, dlo_file, time, loopct,TC_1,TC_2,TC_3,TC_4,TC_5,TC_6,TC_7,TC_8, $
                 TC_9,TC_10,TC_11,TC_12,TC_13,TC_14,TC_15,TC_16, $
                 TC_17,TC_18,TC_19,TC_20,TC_21,TC_22,TC_23,TC_24, $
-                TC_25,TC_26,TC_27,TC_28,TC_29,TC_30,TC_31,TC_32,err, $
-                FORMAT = 'D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D'
+                TC_25,TC_26,TC_27,TC_28,TC_29,TC_30,TC_31,$
+                ;TC_32,$
+                err, FORMAT = 'D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D'
 
 ;Fix Loopcount field
-sel1 = where(time EQ max(time),count1)
-sel2 = where(time EQ min(time),count2)
-for i = 0, count1 - 1 do begin
-    a = sel2[i]
-    b = sel1[i]
-    loopct[a:b] = i
-endfor
-if sel1[count1-1] LT n_elements(time) then $
-    loopct[b+1:n_elements(loopct)-1] = i  ;Incomplete loop at end
+if not keyword_set(steady) then begin
+    sel1 = where(time EQ max(time),count1)
+    sel2 = where(time EQ min(time),count2)
+    for i = 0, count1 - 1 do begin
+        a = sel2[i]
+        b = sel1[i]
+        loopct[a:b] = i
+    endfor
+    if sel1[count1-1] LT n_elements(time) then $
+        loopct[b+1:n_elements(loopct)-1] = i  ;Incomplete loop at end
+endif
 
 struct_full = replicate(struct_base,n_elements(time))
 
@@ -114,7 +116,7 @@ struct_full[*].TC_28 = TC_28
 struct_full[*].TC_29 = TC_29
 struct_full[*].TC_30 = TC_30
 struct_full[*].TC_31 = TC_31
-struct_full[*].TC_32 = TC_32
+;struct_full[*].TC_32 = TC_32 See above note in struct def
 struct_full[*].err = err
 
 ;Rename fields to temperature sensors
