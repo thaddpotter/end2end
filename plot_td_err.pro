@@ -1,9 +1,11 @@
 pro plot_td_err,day=day,night=night, steady=steady, plotdir=plotdir
 ;Plots comparisons of thermal desktop data
 ;Arguments:
-;dir - thermal desktop case set directory
-;   Must contain a *.dlo file
-
+;plotdir - directory to save plots to inside end2end/plots/td_(night/day)/
+;Keywords
+;steady - Flag for if the file being read in is from a steady state optimization
+;           If yes, then set steady=1 during call
+;day/night - Flag for time slot, call /night if night, /day if day
 
 ;Setup
 ;-------------------------------------
@@ -13,11 +15,11 @@ if keyword_set(steady) then $
 file = sett.tdpath + 'init_pm2/bootstrap_test2.dlo' else $
 file = sett.tdpath + 'td_pm/bootstrap_test.dlo'
 
-meas_file = sett.tdpath + 'tsense_data/tsense_f2.txt'
+meas_file = sett.tdpath + 'tsense_data/tsense_m2.txt'
 
 ;Read in Data
 ;------------------------------------;
-data_struct = read_td_corr(file,measure_file=meas_file,steady=steady)   ;TD Correlation Data
+data_struct = read_td_corr_dyn(file,measure_file=meas_file,steady=steady)   ;TD Correlation Data
 restore, sett.path + 'data/flight/picture_c1_temp_data.idl'             ;Flight Data
 
 newtag = strarr(n_elements(t.abbr))                                     ;Remove '-' from tags
@@ -48,12 +50,23 @@ check_and_mkdir, sett.plotpath + dir + plotdir
 prefix = tag_names(data_struct)
 prefix = prefix[2:n_elements(prefix)-2]
 
-;String array for legend
+;Trim to fewer loops so graph is more readable
 ntemp = max(data_struct.loopct)+1
+n_loops = 10
+if ntemp GT n_loops then begin
+    inc = ntemp / double(n_loops -1)
+    newinds = floor(dindgen(n_loops,increment = inc))
+    newinds[n_loops-1] = ntemp-1
+endif else begin
+    newinds = indgen(ntemp)
+endelse
+
+;String array for legend
 leg = strarr(ntemp+1)
 leg[0] = 'Flight'
 for i = 1, ntemp do $
     leg[i] = 'Iter ' + n2s(i-1)
+leg = leg[newinds]
 
 ;Loop over all sensors in the list
 foreach element, prefix, ind do begin
@@ -85,7 +98,7 @@ foreach element, prefix, ind do begin
         tt = time[sel2]
     endelse
     ftemp = ftemp[sel2]
-    
+
     ;Plot
     ;-------------------------------------------------------------------------
     plotfile= element
@@ -115,13 +128,13 @@ foreach element, prefix, ind do begin
     loadct,39
 
     ;Initialize Plot, symbols
-    plot,tt,ftemp,position=[0.12,0.12,0.84,0.94],yrange=[-80,30],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]',color=color[0],Title = element
+    plot,tt,ftemp,position=[0.1,0.1,0.8,0.94],yrange=[-50,30],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]',color=color[0],Title = element
 
     ;Match tag to structure
     j = where(tag_names(data_struct) eq strupcase(strtrim(strjoin(strsplit(abbr,'-',/EXTRACT)),2)),ntd)
 
     ;Loop over TD iterations
-    for i=0,ntemp-1 do begin
+    foreach i, newinds do begin
 
         ;Trim to loop
         tdt = data_struct.time[where(data_struct.loopct EQ i)]/3600d + tmin
@@ -132,13 +145,30 @@ foreach element, prefix, ind do begin
             if ntd eq 1 then $
             oplot,tdt, tmp-273.15,color=color[i+1]
         endif
-    endfor
+    endforeach
 
-    cbmlegend,leg,intarr(ntemp+1),color,[0.845,0.94],linsize=0.5
+    cbmlegend,leg,intarr(ntemp),color,[0.845,0.94],linsize=0.5
     endelse
 
     mkeps,/close
     print,'Wrote: '+ sett.plotpath + dir + plotdir + plotfile
 
 endforeach
+
+;Overall error plot for steady state
+if keyword_set(steady) then begin
+    plotfile= 'err'
+    mkeps, sett.plotpath + dir + plotdir + plotfile
+    n = n_elements(data_struct.time)
+
+    plot, indgen(n), data_struct.err, position=[0.12,0.12,0.84,0.94],/xs,/ys,    xtitle='Iteration', ytitle='RMS Error', Title = 'RMS Error on Init'
+
+    mkeps,/close
+    print,'Wrote: '+ sett.plotpath + dir + plotdir + plotfile
+
+endif
+
+
+
+
 end
