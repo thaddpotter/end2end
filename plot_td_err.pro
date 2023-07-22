@@ -15,7 +15,7 @@ if keyword_set(steady) then $
 file = sett.tdpath + 'init_pm2/bootstrap_test2.dlo' else $
 file = sett.tdpath + 'td_pm/bootstrap_test.dlo'
 
-meas_file = sett.tdpath + 'tsense_data/tsense_m2.txt'
+meas_file = sett.tdpath + 'tsense_data/tsense_f3.txt'
 
 ;Read in Data
 ;------------------------------------;
@@ -128,7 +128,7 @@ foreach element, prefix, ind do begin
     loadct,39
 
     ;Initialize Plot, symbols
-    plot,tt,ftemp,position=[0.1,0.1,0.8,0.94],yrange=[-50,30],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]',color=color[0],Title = element
+    plot,tt,ftemp,position=[0.1,0.1,0.8,0.94],yrange=[-75,25],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]',color=color[0],Title = element
 
     ;Match tag to structure
     j = where(tag_names(data_struct) eq strupcase(strtrim(strjoin(strsplit(abbr,'-',/EXTRACT)),2)),ntd)
@@ -161,7 +161,7 @@ if keyword_set(steady) then begin
     mkeps, sett.plotpath + dir + plotdir + plotfile
     n = n_elements(data_struct.time)
 
-    plot, indgen(n), data_struct.err, position=[0.12,0.12,0.84,0.94],/xs,/ys,    xtitle='Iteration', ytitle='RMS Error', Title = 'RMS Error on Init'
+    plot, indgen(n), data_struct.err, position=[0.12,0.12,0.84,0.94],/xs,/ys,  xtitle='Iteration', ytitle='RMS Error', Title = 'RMS Error on Init'
 
     mkeps,/close
     print,'Wrote: '+ sett.plotpath + dir + plotdir + plotfile
