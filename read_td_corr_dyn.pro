@@ -62,7 +62,7 @@ if not keyword_set(steady) then begin
         b = sel1[i]
         loopct[a:b] = i
     endfor
-    if sel1[count1-1] LT n_elements(time) then $
+    if sel1[count1-1] LT n_elements(time)-1 then $
         loopct[b+1:n_elements(loopct)-1] = i  ;Incomplete loop at end
 endif
 

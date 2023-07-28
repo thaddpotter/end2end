@@ -10,7 +10,7 @@ pro gen_flight_temp, start_time, stop_time, interval
 sett = e2e_load_settings()
 
 ;Restore flight data from picctest
-restore, 'data/flight/temp_data.idl'
+restore, sett.path + 'data/flight/picture_c1_temp_data.idl'
 
 ;Make array of time points fit to output times
 n_points = ceil( (stop_time - start_time)/interval + 1 )
@@ -59,7 +59,9 @@ tmp = { TIME:   0d  ,$
         T13:	0d	,$
         T12:	0d	,$
         T11:	0d	,$
-        OBB :	0d $
+        OBB1:	0d  ,$
+        OBB2:	0d  ,$
+        OBB3:	0d  $
 }
 
 out = replicate(tmp,n_points)
@@ -72,7 +74,7 @@ endfor
 newtags = tag_names(tmp)
 
 ;Fill output
-n_abbr = 37
+n_abbr = 39
 out.time = time[t_list]
 
 for j = 1, n_abbr-1 do begin

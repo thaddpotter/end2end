@@ -15,7 +15,7 @@ if keyword_set(steady) then $
 file = sett.tdpath + 'init_pm2/bootstrap_test2.dlo' else $
 file = sett.tdpath + 'td_pm/bootstrap_test.dlo'
 
-meas_file = sett.tdpath + 'tsense_data/tsense_f3.txt'
+meas_file = sett.tdpath + 'tsense_data/tsense_f4.txt'
 
 ;Read in Data
 ;------------------------------------;
@@ -123,12 +123,15 @@ foreach element, prefix, ind do begin
 
     endif else begin
 
+    ;Plot Transient
+
     ;Color Settings
-    color=bytscl(dindgen(ntemp+1),top=254)
+    nel = min([n_loops,ntemp])
+    color=bytscl(dindgen(nel+1),top=254)
     loadct,39
 
     ;Initialize Plot, symbols
-    plot,tt,ftemp,position=[0.1,0.1,0.8,0.94],yrange=[-75,25],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]',color=color[0],Title = element
+    plot,tt,ftemp,position=[0.12,0.12,0.8,0.94],yrange=minmax(ftemp)+[-30,20],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]',color=color[0],Title = element
 
     ;Match tag to structure
     j = where(tag_names(data_struct) eq strupcase(strtrim(strjoin(strsplit(abbr,'-',/EXTRACT)),2)),ntd)
@@ -147,7 +150,7 @@ foreach element, prefix, ind do begin
         endif
     endforeach
 
-    cbmlegend,leg,intarr(ntemp),color,[0.845,0.94],linsize=0.5
+    cbmlegend,leg,intarr(nel),color,[0.815,0.92],linsize=0.5
     endelse
 
     mkeps,/close
