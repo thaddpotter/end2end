@@ -34,9 +34,9 @@ fieldcount = n_elements(fields)
 close,lun
 
 ;Construct execute strings
-struct_str = 'struct_base = {time: 0d, LOOPCT: 0d, '
+struct_str = 'struct_base = {time: 0d, LOOPCT: 0, '
 read_str = 'readcol, dlo_file, time, loopct, '
-format_str = "format = 'D,D,D"
+format_str = "format = 'D,I,D"
 for i = 1,fieldcount-3 do begin
     struct_str = struct_str + 'TC_'+n2s(i)+': 0d,'
     read_str = read_str + 'TC_'+n2s(i)+', '
@@ -70,7 +70,7 @@ struct_full = replicate(struct_base,n_elements(time))
 
 ;Fill output structure
 struct_full[*].time = roundn(time,3)
-struct_full[*].loopct = loopct
+struct_full[*].loopct = fix(loopct + 0.5)
 
 for i = 1, fieldcount-3 do begin
 fill_str = 'struct_full[*].TC_' + n2s(i) + '= TC_' + n2s(i) 
