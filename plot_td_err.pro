@@ -1,4 +1,4 @@
-pro plot_steady, data_struct, abbr, ftemp
+pro plot_steady, data_struct, abbr, ftemp, element
 ;------------------------------------------------------------------------- 
 ;Plots individual sensors for steady-state optimization runs in thermal desktop
 ;-------------------------------------------------------------------------
@@ -19,7 +19,7 @@ cbmlegend,['Flight', 'TD'],intarr(2),color,[0.845,0.94],linsize=0.5
 end
 
 
-pro plot_indiv, data_struct, abbr, tt, ftemp, tmin, newinds
+pro plot_indiv, data_struct, abbr, tt, ftemp, tmin, newinds, element
 ;-------------------------------------------------------------------------
 ;Plots individual sensors for transient optimization runs in thermal desktop
 ;Loops over iterations to view progress as the solver runs
@@ -77,7 +77,7 @@ pro plot_groups, t, adc_temp, ftemp, tmin, tmax, data_struct, time, basedir
 ;Loops over individual sensors to see related behaviour
 ;-------------------------------------------------------------------------
 
-prefix = ['Beam_1','Beam_2','Bench','Kin','Rear','M2']
+prefix = ['Beam_1','Beam_2','Rear','Bench','Kinematic','Secondary']
 
 ;Filled circle symbol
 symbol_arr = FINDGEN(17) * (!PI*2/16.)
@@ -294,11 +294,11 @@ foreach element, prefix, ind do begin
 
     ;Plot Steady State
     if keyword_set(steady) then begin
-        plot_steady, data_struct, abbr, ftemp
+        plot_steady, data_struct, abbr, ftemp, element
     
     ;Plot Transient
     endif else begin
-        plot_indiv, data_struct, abbr, tt, ftemp, tmin, newinds
+        plot_indiv, data_struct, abbr, tt, ftemp, tmin, newinds, element
     endelse
 
     mkeps,/close
