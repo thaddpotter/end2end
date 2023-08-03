@@ -1,4 +1,4 @@
-pro gen_flight_temp, start_time, stop_time, interval
+pro gen_flight_temp, start_time, stop_time, interval, label = label
 ;------------------------------------------------
 ;Generates a list of temperatures from flight 1 data for some time window
 ;------------------------------------------------
@@ -6,6 +6,11 @@ pro gen_flight_temp, start_time, stop_time, interval
 ;start_time - time to start recording
 ;stop_time - time to stop recording
 ;interval - time interval to record to sheet
+
+;Keywords
+;label - set to output sensor names in headers instead of Thermal Desktop Measure Key
+;       (Easier to read and debug table, but will not be readable as a dlc!)
+
 ;Settings block
 sett = e2e_load_settings()
 
@@ -102,7 +107,7 @@ filename = 'output/temp/tvals_' + t1 + '_' + t2 + '.csv'
 check_and_mkdir, 'output/temp/'
 
 openw, 1, filename
-write_ttable, 1, out, key_arr
+write_ttable, 1, out, key_arr, label=label
 close, 1
 print, 'Wrote: ' + filename
 

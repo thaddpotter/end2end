@@ -1,4 +1,4 @@
-pro write_ttable,unit,table, key_arr
+pro write_ttable,unit,table, key_arr, label=label
 ;;Writes out table of temperature data from flight
 ;;Called by gen_flight_temp
 
@@ -10,10 +10,13 @@ pro write_ttable,unit,table, key_arr
 ncols = n_elements(key_arr[*,0])
 tmin = min(table[0].(0))
 
+if keyword_set(label) then sensor = key_arr[*,0] $
+else sensor = key_arr[*,1]
+
 ;Write Headers
 printf, unit, 'TIME', md, format = f1
 for j=0, ncols-1 do begin
-    printf, unit, 'TC_' + n2s(j+1), md, format = f1
+    printf, unit, sensor[j], md, format = f1
 endfor
 printf,unit, '' ;Carriage Return
 
@@ -29,8 +32,6 @@ for j=0,n_elements(table)-1 do begin
 
     ;Convert Time to seconds from T0
     time = (table[j].(0) - tmin) * 3600d
-
-    if j EQ 3 then stop
     printf, unit, time, md, format = f1
     ;Loop over columns
     for i = 1, ncols-1 do begin
