@@ -12,6 +12,10 @@ sett = e2e_load_settings()
 ;Restore flight data from picctest
 restore, sett.path + 'data/flight/picture_c1_temp_data.idl'
 
+;Read in measure file
+measure_file = sett.tdpath + 'tsense_data/tsense_f5.txt'
+key_arr = read_td_measure(measure_file)
+
 ;Make array of time points fit to output times
 n_points = ceil( (stop_time - start_time)/interval + 1 )
 points = dindgen(n_points, start = start_time, increment=interval)
@@ -22,20 +26,15 @@ for i = 0, n_points-1 do begin
     t_list[i] = ind
 endfor
 
-;make output struct
+;make output struct (TODO: Make dynamic from measure file?)
 tmp = { TIME:   0d  ,$
         M2GL:	0d	,$
         OBM1:	0d	,$
         OBM2:	0d	,$
         HEX	:	0d	,$
         OBM3:	0d	,$
-        M2PL:	0d	,$
-        M1B1:	0d	,$
-        M1B2:	0d	,$
-        M1B3:	0d	,$
-        M1G1:	0d	,$
-        M1G2:	0d	,$
-        M1G3:	0d	,$
+        M1B:	0d	,$
+        M1G:    0d	,$
         M1P2:	0d	,$
         T45:	0d	,$
         T44:	0d	,$
@@ -74,13 +73,23 @@ endfor
 newtags = tag_names(tmp)
 
 ;Fill output
-n_abbr = 39
+n_abbr = n_elements(key_arr[*,0])
 out.time = time[t_list]
 
 for j = 1, n_abbr-1 do begin
-    a = where(strmatch(flight_tags,newtags[j]))
-    ind = fix(a[0])
-    out.(j) = reform(adc_temp[ind,t_list]) + 273.15
+    sel = where(strmatch(flight_tags,newtags[j]))
+
+    ;If theres no perfect match, average over the numbered sensors with the same name
+    if sel LE 0 then begin
+        string2 = newtags[j].substring(0,2) + '?'
+        sel  = where(strmatch(flight_tags,string2))
+        tmp = mean(adc_temp[sel,*],dimension=1,/DOUBLE)
+        out.(j) =  reform(tmp[t_list]) + 273.15
+
+    endif else begin
+        ind = fix(sel[0])
+        out.(j) = reform(adc_temp[ind,t_list]) + 273.15
+    endelse
 endfor
 
 
@@ -93,7 +102,7 @@ filename = 'output/temp/tvals_' + t1 + '_' + t2 + '.csv'
 check_and_mkdir, 'output/temp/'
 
 openw, 1, filename
-write_ttable, 1, out, newtags
+write_ttable, 1, out, key_arr
 close, 1
 print, 'Wrote: ' + filename
 
