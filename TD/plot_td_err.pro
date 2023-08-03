@@ -223,7 +223,7 @@ if keyword_set(day) then begin
     tmin = 12.45 
     dir = 'td_day/'
 endif else if keyword_set(night) then begin
-    tmin = 21.95
+    tmin = 22.95
     dir = 'td_night/'
 endif else begin
     print, 'Please specify timeslot'
