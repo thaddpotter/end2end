@@ -34,7 +34,7 @@ for j=0,n_elements(table)-1 do begin
     time = (table[j].(0) - tmin) * 3600d
     printf, unit, time, md, format = f1
     ;Loop over columns
-    for i = 1, ncols-1 do begin
+    for i = 1, ncols do begin
         printf, unit, table[j].(i), md, format = f1
     endfor
     printf,unit, '' ;Carriage Return

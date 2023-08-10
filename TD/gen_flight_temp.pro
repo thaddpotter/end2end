@@ -81,7 +81,7 @@ newtags = tag_names(tmp)
 n_abbr = n_elements(key_arr[*,0])
 out.time = time[t_list]
 
-for j = 1, n_abbr-1 do begin
+for j = 1, n_abbr do begin
     sel = where(strmatch(flight_tags,newtags[j]))
 
     ;If theres no perfect match, average over the numbered sensors with the same name
@@ -97,16 +97,15 @@ for j = 1, n_abbr-1 do begin
     endelse
 endfor
 
-
 ;fix time formatting for filename
 t1 = strjoin(strsplit(n2s(start_time,format='(F5.2)'),'.',/EXTRACT))
 t2 = strjoin(strsplit(n2s(stop_time,format='(F5.2)'),'.',/EXTRACT))
 
 ;write to csv
-filename = 'output/temp/tvals_' + t1 + '_' + t2 + '.csv'
-check_and_mkdir, 'output/temp/'
+filename = 'tvals_' + t1 + '_' + t2 + '.csv'
+check_and_mkdir, sett.outpath + 'temp/'
 
-openw, 1, filename
+openw, 1, sett.outpath + 'temp/' + filename
 write_ttable, 1, out, key_arr, label=label
 close, 1
 print, 'Wrote: ' + filename

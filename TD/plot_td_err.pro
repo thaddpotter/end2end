@@ -47,26 +47,24 @@ color=bytscl(dindgen(nel+1),top=254)
 loadct,39
 
 ;Initialize Plot, symbols
-plot,tt,ftemp,position=[0.12,0.12,0.8,0.94],yrange=minmax(ftemp)+[-30,20],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]',color=color[0],Title = element
+plot,tt,ftemp,position=[0.12,0.12,0.8,0.94],yrange=minmax(ftemp)+[-10,10],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]',color=color[0],Title = element
 
 ;Match tag to structure
 j = where(tag_names(data_struct) eq strupcase(strtrim(strjoin(strsplit(abbr,'-',/EXTRACT)),2)),ntd)
 
 ;Loop over TD iterations
-foreach i, newinds, ind2 do begin
 
+foreach i, newinds, ind2 do begin
     ;Trim to loop
     tdt = data_struct.time[where(data_struct.loopct EQ i)]/3600d + tmin
     tmp = data_struct.(j)[where(data_struct.loopct EQ i)]
 
     ;Plot TD Data
-    if not keyword_set(flight_only) then begin
-        if ntd eq 1 then $
-        oplot,tdt, tmp-273.15,color=color[ind2+1]
-    endif
+    if ntd eq 1 then $
+    oplot,tdt, tmp-273.15,color=color[ind2+1]
 endforeach
 
-cbmlegend,leg,intarr(nel)+1,color,[0.815,0.92],linsize=0.5
+cbmlegend,leg,intarr(nel),color,[0.815,0.92],linsize=0.5
 end
 
 
@@ -77,7 +75,7 @@ pro plot_groups, t, adc_temp, ftemp, tmin, tmax, data_struct, time, basedir
 ;Loops over individual sensors to see related behaviour
 ;-------------------------------------------------------------------------
 
-prefix = ['Beam_1','Beam_2','Rear','Bench','Kinematic','Secondary']
+prefix = ['Beam_1','Beam_2','Beam_3','Beam_4','Rear','Bench','Kinematic','Secondary']
 
 ;Filled circle symbol
 symbol_arr = FINDGEN(17) * (!PI*2/16.)
@@ -117,13 +115,15 @@ foreach element, prefix, ind do begin
     ;Match to flight data
     case ind of
             0: sel = where(strmatch(t2.abbr,'T1**') , ntemp)
-            1: sel = where(strmatch(t2.abbr,'T2**')  , ntemp)   
-            2: sel = where(strmatch(t2.abbr,'T**5') or $
+            1: sel = where(strmatch(t2.abbr,'T2**')  , ntemp) 
+            2: sel = where(strmatch(t2.abbr,'T3**') , ntemp)
+            3: sel = where(strmatch(t2.abbr,'T4**')  , ntemp)    
+            4: sel = where(strmatch(t2.abbr,'T**5') or $
                            strmatch(t2.abbr,'M1B') or strmatch(t2.abbr,'M1G') , ntemp) 
-            3: sel = where(strmatch(t2.abbr,'OBB?') or strmatch(t2.abbr,'OBM?') , ntemp)
-            4: sel = where(strmatch(t2.abbr,'OBM?') or $
-                        strmatch(t2.abbr,'T3*2') or strmatch(t2.abbr,'T3*3') , ntemp)
-            5: sel = where(strmatch(t2.abbr,'T3*1') or $
+            5: sel = where(strmatch(t2.abbr,'OBB?') or strmatch(t2.abbr,'OBM?') , ntemp)
+            6: sel = where(strmatch(t2.abbr,'OBM?') or strmatch(t2.abbr,'T3*2') or $
+                           strmatch(t2.abbr,'T3*3')or strmatch(t2.abbr,'T3*4') , ntemp)
+            7: sel = where(strmatch(t2.abbr,'T3*1') or $
                         strmatch(t2.abbr, 'M2GL') or strmatch(t2.abbr,'HEX') , ntemp)
     endcase
 
@@ -144,7 +144,7 @@ foreach element, prefix, ind do begin
     loadct,39
 
     ;Initialize Plot, symbols
-    plot,tt,ftemp[0,*],position=[0.12,0.12,0.8,0.94],yrange=minmax(ftemp)+[-30,20],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]',color=color[0],Title = element + ': Iteration ' + n2s(bestloop) 
+    plot,tt,ftemp[0,*],position=[0.12,0.12,0.8,0.94],yrange=minmax(ftemp)+[-10,10],/xs,/ys,xtitle='Time [hrs]',ytitle='Temperature [C]',color=color[0],Title = element + ': Iteration ' + n2s(bestloop) 
 
     ;Get and plot matching model data
     j = where(tag_names(data_struct) eq strupcase(strtrim(strjoin(strsplit(abbr[0],'-',/EXTRACT)),2)),ntd)
@@ -192,17 +192,22 @@ pro plot_td_err,day=day,night=night, steady=steady, plotdir=plotdir
 ;-------------------------------------------------------------------
 sett = e2e_load_settings()
 
-if keyword_set(steady) then $
-file = sett.tdpath + 'init_pm2/bootstrap_test2.dlo' else $
-file = sett.tdpath + 'td_pm/bootstrap_test.dlo'
+;Filepath
+case 1 of
+    keyword_set(steady) AND keyword_set(day): $
+        file = sett.tdpath + 'init_am/correlation_data_am.dlo'
+    keyword_set(steady) AND keyword_set(night): $
+        file = sett.tdpath + 'init_pm2/bootstrap_test2.dlo'
+    (NOT keyword_set(steady)) AND keyword_set(day): $
+        file = sett.tdpath + 'td_am/bootstrap_test2.dlo'
+    (NOT keyword_set(steady)) AND keyword_set(night): $
+        file = sett.tdpath + 'td_pm/bootstrap_test.dlo'
+    else: begin
+        print, 'Wrong keyword selection'
+    end
+endcase
 
 meas_file = sett.tdpath + 'tsense_data/tsense_f5.txt'
-
-;Check for keywords
-if keyword_set(steady) and keyword_set(group) then begin
-    print, 'Cannot use group with steady'
-    stop
-endif
 
 ;TD Correlation Data
 data_struct = read_td_corr_dyn(file,measure_file=meas_file,steady=steady)   
@@ -258,7 +263,7 @@ prefix = prefix[2:n_elements(prefix)-2]
 
 ;Loop over sensors
 ;--------------------------------------------------------------------------
-foreach element, prefix, ind do begin
+foreach element, prefix do begin
 
     ;Match to flight data
     sel  = where(strmatch(newtag,element))
@@ -307,6 +312,7 @@ foreach element, prefix, ind do begin
 endforeach
 
 ;Make group plots
+if not keyword_set(steady) then $
 plot_groups, t, adc_temp, ftemp, tmin, tmax, data_struct, time, basedir
 
 ;Overall error plot for steady state
