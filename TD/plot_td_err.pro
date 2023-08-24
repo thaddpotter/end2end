@@ -221,7 +221,7 @@ pro plot_td_err, day = day, night = night, steady = steady, plotdir = plotdir
 
   ; Xlimits
   if keyword_set(day) then begin
-    tmin = 12.45
+    tmin = 13.75
     dir = 'td_day/'
   endif else if keyword_set(night) then begin
     tmin = 22.95
