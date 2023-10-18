@@ -30,7 +30,7 @@ Setup:
 
 # I Make Raw Brightness Maps (Fast for Best Case, extremely slow otherwise)
 
-IDL> e2e_gen_maps
+IDL> e2e_read_targetlist
 
 # II Run base model in piccsim (Fast, must be run inside piccsim directory)
 

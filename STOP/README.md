@@ -1,0 +1,1 @@
+This folder is for scripts which are used to convert/read data in between elements of the STOP model
