@@ -74,20 +74,18 @@ pro convert_displacements
   m1conic = -1
   m2conic = -0.422335
 
-  ; TODO: MATCH POINTS WITH ANSYS!
-
   m1_control = [[0d, 16d, conic_z(0, 16, m1roc, m1conic)], $
-    [0d, 27.75d, conic_z(0, 27.75, m1roc, m1conic)], $
     [-11.75d, 16d, conic_z(-11.75, 16, m1roc, m1conic)], $
+    [0d, 27.75d, conic_z(0, 27.75, m1roc, m1conic)], $
     [0d, 4.25d, conic_z(0, 4.25, m1roc, m1conic)]]
   m2_control = [[0d, 3.3837d, conic_z(0, 3.3837, m2roc, m2conic)], $
-    [0d, 0.7795d, conic_z(0, 0.7795, m2roc, m2conic)], $
+    [0d, 5.9962d, conic_z(0, 5.9962, m2roc, m2conic)], $
     [5.0875d, 3.3837d, conic_z(5.0875, 3.3837, m2roc, m2conic)], $
-    [0d, 5.9962d, conic_z(0, 5.9962, m2roc, m2conic)]]
-  opt_control = [[-13d, -2.97d, -20.2d], $
-    [11d, -2.97d, -20.2d], $
+    [0d, 0.7795d, conic_z(0, 0.7795, m2roc, m2conic)]]
+  opt_control = [[11d, -2.97d, -20.2d], $
     [11d, -2.97d, 27.8d], $
-    [-13d, -2.97d, 27.8d]]
+    [-13d, -2.97d, 27.8d], $
+    [-13d, -2.97d, -20.2d]]
 
   ; Convert to meters
   m1_control *= 0.0254
