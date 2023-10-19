@@ -1,4 +1,4 @@
-pro split_td_results, file
+pro split_td_results, file,split=split
   compile_opt idl2
 
   sett = e2e_load_settings()
@@ -6,7 +6,10 @@ pro split_td_results, file
   ; Open files
   counter = 1
   openr, 1, sett.tdpath + 'ansys/thermal_desktop_export/' + file + '.dat'
-  openw, 2, sett.tdpath + 'ansys/thermal_desktop_export/' + file + '_split' + n2s(counter) + '.dat'
+
+  if keyword_set(split) then $
+  openw, 2, sett.tdpath + 'ansys/thermal_desktop_export/' + file + '_split' + n2s(counter) + '.dat' else $
+  openw,2,sett.tdpath + 'ansys/thermal_desktop_export/' + file + '_split.dat'
 
   line = ''
 
@@ -23,11 +26,13 @@ pro split_td_results, file
     readf, 1, line
     ; if this line starts a loop: start a new file for output
     if (strmatch(line, '*TIME*')) then begin
-      close, 2
-      print, 'Wrote: ' + file + '_split' + n2s(counter) + '.dat'
+      if keyword_set(split) then begin
+        close, 2
+        print, 'Wrote: ' + file + '_split' + n2s(counter) + '.dat'
 
-      counter++
-      openw, 2, sett.tdpath + 'ansys/thermal_desktop_export/' + file + '_split' + n2s(counter) + '.dat'
+        counter++
+        openw, 2, sett.tdpath + 'ansys/thermal_desktop_export/' + file + '_split' + n2s(counter) + '.dat'
+      endif else printf,2,'solve'
     endif
 
     ; Print line out to file
@@ -35,5 +40,7 @@ pro split_td_results, file
   end
 
   close, 1, 2
-  print, 'Wrote: ' + file + '_split' + n2s(counter) + '.dat'
+  if keyword_set(split) then $
+  print, 'Wrote: ' + file + '_split' + n2s(counter) + '.dat' else $
+  print, 'Wrote: ' + file + '_split.dat'
 end
