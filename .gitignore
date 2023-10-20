@@ -1,5 +1,6 @@
 #Ignore Plot and output directories
 output
+plots
 
 #Ignore flight data
 data/flight

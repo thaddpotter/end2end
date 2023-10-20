@@ -1,19 +1,3 @@
-function ax_angle, axis, angle
-  ; Creates a rotation matrix for some angle about some axis
-  ; AXIS SHOULD BE NORMALIZED!
-  compile_opt idl2
-  ; ANGLE MUST BE IN RADIANS
-  a = double(angle)
-  x = axis[0]
-  y = axis[1]
-  z = axis[2]
-
-  ; Make rotation matrices for axes
-  return, [[cos(a) + x ^ 2 * (1 - cos(a)), x * y * (1 - cos(a)) - z * sin(a), x * z * (1 - cos(a)) + y * sin(a)], $
-    [x * y * (1 - cos(a)) + z * sin(a), cos(a) + y ^ 2 * (1 - cos(a)), y * z * (1 - cos(a)) - x * sin(a)], $
-    [x * z * (1 - cos(a)) - y * sin(a), y * z * (1 - cos(a)) - x * sin(a), cos(a) + z ^ 2 * (1 - cos(a))]]
-end
-
 function frameshift_opt, params
   ; Optimization function for calculated coordinate fram transformations
   ; -----------------------------------------------
@@ -22,6 +6,7 @@ function frameshift_opt, params
   ; output: matrix of output points
   ; ----------------------------------------------
   ; Since this will also be used for calcuating in the Zemax frame, uses the (X,Y',Z'' formalism for euler angles)
+  ; TODO: Order ot displacements vs rotation
   compile_opt idl2
 
   ; Variable import/setup
