@@ -75,13 +75,13 @@ pro convert_displacements
   m2conic = -0.422335
 
   m1_control = [[0d, 16d, conic_z(0, 16, m1roc, m1conic)], $
-    [-11.75d, 16d, conic_z(-11.75, 16, m1roc, m1conic)], $
-    [0d, 27.75d, conic_z(0, 27.75, m1roc, m1conic)], $
-    [0d, 4.25d, conic_z(0, 4.25, m1roc, m1conic)]]
+    [-11.85, 16d, conic_z(-11.8, 16, m1roc, m1conic)], $
+    [0d, 27.85d, conic_z(0, 27.85, m1roc, m1conic)], $
+    [0d, 4.2d, conic_z(0, 4.2, m1roc, m1conic)]]
   m2_control = [[0d, 3.3837d, conic_z(0, 3.3837, m2roc, m2conic)], $
-    [0d, 5.9962d, conic_z(0, 5.9962, m2roc, m2conic)], $
-    [5.0875d, 3.3837d, conic_z(5.0875, 3.3837, m2roc, m2conic)], $
-    [0d, 0.7795d, conic_z(0, 0.7795, m2roc, m2conic)]]
+    [0d, 6.1437d, conic_z(0, 6.1437, m2roc, m2conic)], $
+    [2.75d, 3.3837d, conic_z(2.75, 3.3837, m2roc, m2conic)], $
+    [0d, 0.642d, conic_z(0, 0.642, m2roc, m2conic)]]
   opt_control = [[11d, -2.97d, -20.2d], $
     [11d, -2.97d, 27.8d], $
     [-13d, -2.97d, 27.8d], $
@@ -92,9 +92,13 @@ pro convert_displacements
   m2_control *= 0.0254
   opt_control *= 0.0254
 
-  m1_disp = calc_frameshift([m1_struct[0].cx, m1_struct[0].cy, m1_struct[0].cz], m1_control)
-  m2_disp = calc_frameshift([m2_struct[0].cx, m2_struct[0].cy, m2_struct[0].cz], m2_control)
-  opt_disp = calc_frameshift([opt_struct[0].cx, opt_struct[0].cy, opt_struct[0].cz], opt_control)
+  m1_test = [m1_struct[0].cx, m1_struct[0].cy, m1_struct[0].cz]
+  m2_test = [m2_struct[0].cx, m2_struct[0].cy, m2_struct[0].cz]
+  opt_test = [opt_struct[0].cx, opt_struct[0].cy, opt_struct[0].cz]
+
+  m1_disp = calc_frameshift(m1_test, m1_control)
+  m2_disp = calc_frameshift(m2_test, m2_control)
+  opt_disp = calc_frameshift(opt_test, opt_control)
 
   print, m1_disp
   print, m2_disp

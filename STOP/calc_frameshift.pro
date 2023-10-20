@@ -50,7 +50,7 @@ function frameshift_opt, params
   Rfull = Rz # Ry # Rx
   Rout = Rfull # input + trans
 
-  return, total((Rout - output) ^ 2)
+  return, total((Rout - output) ^ 2) / sz[2]
 end
 
 function calc_frameshift, r1, r2, guess = guess
@@ -74,5 +74,5 @@ function calc_frameshift, r1, r2, guess = guess
 
   powell, guess, xi, ftol, fmin, 'frameshift_opt', /double
 
-  return, [guess, fmin]
+  return, [guess, sqrt(fmin)]
 end
