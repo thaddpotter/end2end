@@ -1,16 +1,19 @@
 function frameshift_opt, params
+  compile_opt idl2
   ; Optimization function for calculated coordinate fram transformations
   ; -----------------------------------------------
   ; Arguments:
   ; input: matrix of input points
   ; output: matrix of output points
   ; ----------------------------------------------
-  ; Since this will also be used for calcuating in the Zemax frame, uses the (X,Y',Z'' formalism for euler angles)
-  ; TODO: Order ot displacements vs rotation
-  compile_opt idl2
+  ; Since this will also be used for calcuating in the Zemax frame, uses the following order convention:
+  ; dx, dy, dz (dz is preceding surface thickness)
+  ; X, Y', Z'' (Rotation about new axis after rotation)
+  ;
 
   ; Variable import/setup
   common frameshift_opt, input, output
+
   disp = double(params[3 : 5])
   angle = double(params[0 : 2])
 
@@ -33,16 +36,15 @@ function frameshift_opt, params
   trans = rebin(disp, 3, sz[2])
 
   Rfull = Rz # Ry # Rx
-  Rout = (Rfull # input) + trans
+  Rout = Rfull # (input + trans)
 
   return, total((Rout - output) ^ 2) / sz[2]
 end
 
 function calc_frameshift, r1, r2, guess = guess
   compile_opt idl2
-  ; Performs a least squares fit for the rotation and displacement between two coordinate frames
+  ; Performs a least squares fit for the rotation and displacement between two sets of points
 
-  ; TODO: What is the default behavior of zemax for rotate vs displace order?
   ; Return vector
   ; disp = [x,y,z,theta,phi,psi]
   ;

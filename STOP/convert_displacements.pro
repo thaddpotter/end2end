@@ -1,10 +1,12 @@
 ; Documentation
-function apply_shift, points, shifts, nomove = nomove
+function apply_shift, points, shifts, nomove = nomove, rev = rev
   compile_opt idl2
-  ; Applies coordiate shift according to Zemax's conventions
-  ; Displacements?, X,Y',Z''
-  ; TODO: Order ot displacements vs rotation
-  ; TODO: Implement Reverse Reference for undoing the shift
+  ; Applies coordiate shift according to Zemax's order conventions
+  ; dx, dy, dz (dz is preceding surface thickness)
+  ; X, Y', Z'' (Rotation about new axis after rotation)
+  ; KEYWORDS:
+  ; nomove - sets displacement to be 0
+  ; rev - performs the reverse translation (needed to shift back after the surface)
   ;
   ; Variable import/setup
   disp = double(shifts[3 : 5])
@@ -24,15 +26,22 @@ function apply_shift, points, shifts, nomove = nomove
   ; Zaxis has changed twice!
   Rz = ax_angle(Ry # Rx # [0, 0, 1], c)
 
+  Rfull = Rz # Ry # Rx
+
   ; Make translation matrix
   sz = size(points)
   trans = rebin(disp, 3, sz[2])
 
-  Rfull = Rz # Ry # Rx
-  if keyword_set(nomove) then $
-    Rout = Rfull # points else $
-    Rout = Rfull # points + trans
-
+  case 1 of
+    keyword_set(nomove) and (not keyword_set(rev)): $
+      Rout = Rfull # points
+    (not keyword_set(nomove)) and (not keyword_set(rev)): $
+      Rout = Rfull # (points + trans)
+    keyword_set(nomove) and keyword_set(rev): $
+      Rout = transpose(Rfull) # points
+    (not keyword_set(nomove)) and keyword_set(rev): $
+      Rout = (transpose(Rfull) # points) - trans
+  endcase
   return, Rout
 end
 
@@ -49,6 +58,13 @@ pro convert_displacements, reread = reread
   ntimes = n_elements(time_tags)
   nsteps = 8
   data_file = sett.datapath + 'stop/ANSYS_disp.idl'
+
+  ; Other parameters
+  osize = 0.05 ; Fractional Oversize for Sag Grid
+  ; Size of grid
+  npoints = 512 ; Number of points on sag grid
+  ; note: Units for prescription and others must be the same!
+  unitflag = 2 ; 0 for mm, 1 for cm, 2 for in, 3 for m
 
   ; ----------------------------------------------------------------
   ; Read Data into Structures
@@ -216,27 +232,49 @@ pro convert_displacements, reread = reread
   endfor
 
   ; --------------------------------------------------------------------
-  ; Make Plots
-  ; ------------------------------------------------------------------
+  ; Process displacements
+  ; --------------------------------------------------------------------
+  ; Uses Delauney triangulation to resample the optical mech points onto a regular grid
+  ; General order of operations:
+  ; Apply x and y shifts to create an intermediate grid
+  ; Interpolate dz onto a regular grid (in the parent frame!)
+  ;
+  ; TODO:
+  ; Ask Chris about his residual tip-tilt calculations in displacements.pro
+  ; Figure out the interpolation calculations
   ;
   ;
-  ;
+  for i = 0, tsteps - 1 do begin
+    ; Apply displacement
+    m1_tmp = local_m1 + locd_m1[*, *, i]
+    m2_tmp = local_m2 + locd_m2[*, *, i]
+    opt_tmp = local_opt + locd_opt[*, *, i]
+
+    ; get bounding rectangle
+    m1_x = (1 + osize) * minmax(m1_tmp[0, *, i])
+    m2_x = (1 + osize) * minmax(m2_tmp[0, *, i])
+    opt_x = (1 + osize) * minmax(opt_tmp[0, *, i])
+
+    m1_y = (1 + osize) * minmax(m1_tmp[1, *, i])
+    m2_y = (1 + osize) * minmax(m2_tmp[1, *, i])
+    opt_y = (1 + osize) * minmax(opt_tmp[1, *, i])
+
+    triangulate, m1_tmp[0, *, i], m1_tmp[1, *, i], m1_tri, b = m1_bound
+    triangulate, m2_tmp[0, *, i], m2_tmp[1, *, i], m2_tri, b = m2_bound
+    triangulate, opt_tmp[0, *, i], opt_tmp[1, *, i], opt_tri, b = opt_bound
+
+    ; Interpolate onto regular grid (coord shift for .grd later)
+    m1_sag = trigrid(m1_xvals, m1_yvals, m1_zvals, m1_tri, $
+      extrapolate = m1_bound, nx = npoints, ny = npoints)
+  endfor
 
   stop
   ; --------------------------------------------------------------------
-  ; Write output files
+  ; Write output files, make plots
   ; -------------------------------------------------------------------
   ;
-  ; Need: 6-D displacements for each optic for each time (done)
-  ; Phase error maps for M1, M2 for each time step (need to resample)
-  ; Timestep label
-  ; TODO: How are sag surfaces sampled?
-  ; note: Units for prescription and others must be the same!
-  ; unitflag: 0 for mm, 1 for cm, 2 for in, 3 for m
-  unitflag = 2
-
-  write_zemax, ? ? ?
-
+  ; TODO: should I make point maps for mesh, similar to what chris had done?
+  ;
   for i = 0, nsteps do begin
     write_sag, filename, ..., unitflag
   endfor

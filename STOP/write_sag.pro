@@ -29,8 +29,7 @@ pro write_sag, filename, pos, disp, unitcode
   ;
   ;
 
-  ; Size of grid
-  npoints = 512
+  
   ; How much to oversize the grid by (reflections from edges may be inaccurate)
   osize = 0.1
 
