@@ -33,7 +33,7 @@ function frameshift_opt, params
   trans = rebin(disp, 3, sz[2])
 
   Rfull = Rz # Ry # Rx
-  Rout = Rfull # input + trans
+  Rout = (Rfull # input) + trans
 
   return, total((Rout - output) ^ 2) / sz[2]
 end

@@ -30,8 +30,8 @@ function apply_shift, points, shifts, nomove = nomove
 
   Rfull = Rz # Ry # Rx
   if keyword_set(nomove) then $
-    Rout = Rfull # points + trans else $
-    Rout = Rfull # points
+    Rout = Rfull # points else $
+    Rout = Rfull # points + trans
 
   return, Rout
 end
@@ -105,7 +105,10 @@ pro convert_displacements, reread = reread
     endfor
 
     save, m1_struct, m2_struct, opt_struct, filename = data_file
-  endif else restore, data_file
+  endif else begin
+    print, 'Found existing ANSYS data: ' + n2s(data_file)
+    restore, data_file
+  endelse
   ; -------------------------------------------------------------------
   ; Register Local Coordinate Frames to ANSYS Global
   ; -------------------------------------------------------------------
@@ -133,6 +136,7 @@ pro convert_displacements, reread = reread
   m2_control *= 0.0254
   opt_control *= 0.0254
 
+  print, 'Calculating conversion from ANSYS frame to Zemax Frame...'
   ; Calculate the coordinate conversion
   m1_test = [m1_struct[0].cx, m1_struct[0].cy, m1_struct[0].cz]
   m2_test = [m2_struct[0].cx, m2_struct[0].cy, m2_struct[0].cz]
@@ -193,6 +197,7 @@ pro convert_displacements, reread = reread
   m2_res = dblarr(3, m2_points, tsteps)
   opt_res = dblarr(3, opt_points, tsteps)
 
+  print, 'Calculating Local Displacements of M1, M2, and Opt...'
   for i = 0, tsteps - 1 do begin
     ; Apply displacement
     m1_tmp = local_m1 + locd_m1[*, *, i]
@@ -208,6 +213,32 @@ pro convert_displacements, reread = reread
     m1_res[*, *, i] = apply_shift(m1_tmp - apply_shift(local_m1, m1_err[0 : 5]), m1_err[0 : 5], /nomove)
     m2_res[*, *, i] = apply_shift(m2_tmp - apply_shift(local_m2, m2_err[0 : 5]), m2_err[0 : 5], /nomove)
     opt_res[*, *, i] = apply_shift(opt_tmp - apply_shift(local_opt, opt_err[0 : 5]), opt_err[0 : 5], /nomove)
+  endfor
+
+  ; --------------------------------------------------------------------
+  ; Make Plots
+  ; ------------------------------------------------------------------
+  ;
+  ;
+  ;
+
+  stop
+  ; --------------------------------------------------------------------
+  ; Write output files
+  ; -------------------------------------------------------------------
+  ;
+  ; Need: 6-D displacements for each optic for each time (done)
+  ; Phase error maps for M1, M2 for each time step (need to resample)
+  ; Timestep label
+  ; TODO: How are sag surfaces sampled?
+  ; note: Units for prescription and others must be the same!
+  ; unitflag: 0 for mm, 1 for cm, 2 for in, 3 for m
+  unitflag = 2
+
+  write_zemax, ? ? ?
+
+  for i = 0, nsteps do begin
+    write_sag, filename, ..., unitflag
   endfor
 
   stop
