@@ -59,7 +59,7 @@ function calc_frameshift, r1, r2, guess = guess
     guess = [0.0d, 0.0d, 0.0d, 0.1d, 0.1d, 0.1d] ; Initial Guess
   xi = identity(6) ; Starting Direction Vector
 
-  powell, guess, xi, ftol, fmin, 'frameshift_opt', /double
+  powell, guess, xi, ftol, fmin, 'frameshift_opt', /double, itmax = 1000
 
   return, [guess, sqrt(fmin)]
 end

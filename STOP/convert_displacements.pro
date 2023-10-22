@@ -1,50 +1,3 @@
-; Documentation
-function apply_shift, points, shifts, nomove = nomove, rev = rev
-  compile_opt idl2
-  ; Applies coordiate shift according to Zemax's order conventions
-  ; dx, dy, dz (dz is preceding surface thickness)
-  ; X, Y', Z'' (Rotation about new axis after rotation)
-  ; KEYWORDS:
-  ; nomove - sets displacement to be 0
-  ; rev - performs the reverse translation (needed to shift back after the surface)
-  ;
-  ; Variable import/setup
-  disp = double(shifts[3 : 5])
-  angle = double(shifts[0 : 2])
-
-  ; Convert angles to radians
-  a = angle[0] * !dtor
-  b = angle[1] * !dtor
-  c = angle[2] * !dtor
-
-  ; Make rotation matrices for axes
-  Rx = ax_angle([1, 0, 0], a)
-
-  ; Y axis has changed!
-  Ry = ax_angle(Rx # [0, 1, 0], b)
-
-  ; Zaxis has changed twice!
-  Rz = ax_angle(Ry # Rx # [0, 0, 1], c)
-
-  Rfull = Rz # Ry # Rx
-
-  ; Make translation matrix
-  sz = size(points)
-  trans = rebin(disp, 3, sz[2])
-
-  case 1 of
-    keyword_set(nomove) and (not keyword_set(rev)): $
-      Rout = Rfull # points
-    (not keyword_set(nomove)) and (not keyword_set(rev)): $
-      Rout = Rfull # (points + trans)
-    keyword_set(nomove) and keyword_set(rev): $
-      Rout = transpose(Rfull) # points
-    (not keyword_set(nomove)) and keyword_set(rev): $
-      Rout = (transpose(Rfull) # points) - trans
-  endcase
-  return, Rout
-end
-
 pro convert_displacements, reread = reread
   ; Startup
 
@@ -135,7 +88,7 @@ pro convert_displacements, reread = reread
   m2conic = -0.422335
 
   m1_control = [[0d, 16d, conic_z(0, 16, m1roc, m1conic)], $
-    [-11.85, 16d, conic_z(-11.8, 16, m1roc, m1conic)], $
+    [-11.8, 16d, conic_z(-11.8, 16, m1roc, m1conic)], $
     [0d, 27.85d, conic_z(0, 27.85, m1roc, m1conic)], $
     [0d, 4.2d, conic_z(0, 4.2, m1roc, m1conic)]]
   m2_control = [[0d, 3.3837d, conic_z(0, 3.3837, m2roc, m2conic)], $
@@ -174,9 +127,9 @@ pro convert_displacements, reread = reread
   opt_points = n_elements(opt_struct[0].x)
   tsteps = n_elements(m1_struct)
 
-  local_m1 = apply_shift([m1_struct[0].x, m1_struct[0].y, m1_struct[0].z], m1_shift)
-  local_m2 = apply_shift([m2_struct[0].x, m2_struct[0].y, m2_struct[0].z], m2_shift)
-  local_opt = apply_shift([opt_struct[0].x, opt_struct[0].y, opt_struct[0].z], opt_shift)
+  local_m1 = apply_shift([m1_struct[0].x, m1_struct[0].y, m1_struct[0].z], m1_shift[0 : 5])
+  local_m2 = apply_shift([m2_struct[0].x, m2_struct[0].y, m2_struct[0].z], m2_shift[0 : 5])
+  local_opt = apply_shift([opt_struct[0].x, opt_struct[0].y, opt_struct[0].z], opt_shift[0 : 5])
 
   locd_m1 = dblarr(3, m1_points, tsteps)
   locd_m2 = dblarr(3, m2_points, tsteps)
@@ -188,30 +141,29 @@ pro convert_displacements, reread = reread
     disp_opt = [opt_struct[i].dx, opt_struct[i].dy, opt_struct[i].dz]
 
     ; Displacements only need to be rotated
-    locd_m1[*, *, i] = apply_shift(disp_m1, m1_shift, /nomove)
-    locd_m2[*, *, i] = apply_shift(disp_m2, m2_shift, /nomove)
-    locd_opt[*, *, i] = apply_shift(disp_opt, opt_shift, /nomove)
+    locd_m1[*, *, i] = apply_shift(disp_m1, m1_shift[0 : 5], /nomove)
+    locd_m2[*, *, i] = apply_shift(disp_m2, m2_shift[0 : 5], /nomove)
+    locd_opt[*, *, i] = apply_shift(disp_opt, opt_shift[0 : 5], /nomove)
   endfor
 
   ; ----------------------------------------------------------------------
   ; Calculate Displacement data in the local frame
   ; ----------------------------------------------------------------------
   ;
-  ;
-  ;
   ; With all the points in the correct reference frame, now we need to apply
   ; the displacements over time and get the transformation that was applied to
   ; get there
-  ; A
   ;
 
+  ; Transformation parameters from the nominal to displaced frame
   m1_err = dblarr(n_elements(m1_shift), tsteps)
   m2_err = m1_err
   opt_err = m1_err
 
-  m1_res = dblarr(3, m1_points, tsteps)
-  m2_res = dblarr(3, m2_points, tsteps)
-  opt_res = dblarr(3, opt_points, tsteps)
+  ; List of residuals in the displaced frame, with xy coords
+  m1_omap = dblarr(3, m1_points, tsteps)
+  m2_omap = dblarr(3, m2_points, tsteps)
+  opt_omap = dblarr(3, opt_points, tsteps)
 
   print, 'Calculating Local Displacements of M1, M2, and Opt...'
   for i = 0, tsteps - 1 do begin
@@ -225,23 +177,37 @@ pro convert_displacements, reread = reread
     m2_err[*, i] = calc_frameshift(local_m2, m2_tmp)
     opt_err[*, i] = calc_frameshift(local_opt, opt_tmp)
 
-    ; Get residuals (in the frame of the displaced parent)
-    m1_res[*, *, i] = apply_shift(m1_tmp - apply_shift(local_m1, m1_err[0 : 5]), m1_err[0 : 5], /nomove)
-    m2_res[*, *, i] = apply_shift(m2_tmp - apply_shift(local_m2, m2_err[0 : 5]), m2_err[0 : 5], /nomove)
-    opt_res[*, *, i] = apply_shift(opt_tmp - apply_shift(local_opt, opt_err[0 : 5]), opt_err[0 : 5], /nomove)
+    ; Get Residuals in the displaced frame by:
+    ; Getting initial residuals in the initial frame
+    ; Rotate to get new unit vectors, and project onto them by matrix multiplication
+    m1_res = (m1_tmp - apply_shift(local_m1, m1_err[0 : 5])) ## apply_shift(identity(3), m1_err[0 : 5], /nomove)
+    m2_res = (m2_tmp - apply_shift(local_m2, m2_err[0 : 5])) ## apply_shift(identity(3), m2_err[0 : 5], /nomove)
+    opt_res = (opt_tmp - apply_shift(local_opt, opt_err[0 : 5])) ## apply_shift(identity(3), opt_err[0 : 5], /nomove)
+
+    ; Apply x,y,z shift to the local frame data
+    ; Note: If we rotated the initial coords, then project along the new coordinates,
+    ; they will be back where they started!
+    m1_omap[*, *, i] = local_m1 + m1_res
+    m2_omap[*, *, i] = local_m2 + m2_res
+    opt_omap[*, *, i] = local_opt + opt_res
+
+    ; Calculate new z error by subtracting the change in "correct" surface height
+    ; from shifting in X and Y
+    ; Dont need to do this for the bench, since its flat nominally
+    m1_omap[2, *, i] += conic_z(local_m1[0, *], local_m1[1, *], m1roc, m1conic) - $
+      conic_z(m1_omap[0, *, i], m1_omap[2, *, i], m1roc, m1conic)
+    m2_omap[2, *, i] += conic_z(local_m2[0, *], local_m2[1, *], m2roc, m2conic) - $
+      conic_z(m2_omap[0, *, i], m2_omap[2, *, i], m2roc, m2conic)
   endfor
 
+  stop
   ; --------------------------------------------------------------------
   ; Process displacements
   ; --------------------------------------------------------------------
-  ; Uses Delauney triangulation to resample the optical mech points onto a regular grid
-  ; General order of operations:
-  ; Apply x and y shifts to create an intermediate grid
-  ; Interpolate dz onto a regular grid (in the parent frame!)
-  ;
   ; TODO:
   ; Ask Chris about his residual tip-tilt calculations in displacements.pro
   ; Figure out the interpolation calculations
+  ; Just use zernike_aperture?
   ;
   ;
   for i = 0, tsteps - 1 do begin
@@ -250,7 +216,7 @@ pro convert_displacements, reread = reread
     m2_tmp = local_m2 + locd_m2[*, *, i]
     opt_tmp = local_opt + locd_opt[*, *, i]
 
-    ; get bounding rectangle
+    ; get new bounding rectangle
     m1_x = (1 + osize) * minmax(m1_tmp[0, *, i])
     m2_x = (1 + osize) * minmax(m2_tmp[0, *, i])
     opt_x = (1 + osize) * minmax(opt_tmp[0, *, i])
@@ -264,8 +230,6 @@ pro convert_displacements, reread = reread
     triangulate, opt_tmp[0, *, i], opt_tmp[1, *, i], opt_tri, b = opt_bound
 
     ; Interpolate onto regular grid (coord shift for .grd later)
-    m1_sag = trigrid(m1_xvals, m1_yvals, m1_zvals, m1_tri, $
-      extrapolate = m1_bound, nx = npoints, ny = npoints)
   endfor
 
   stop
@@ -276,7 +240,7 @@ pro convert_displacements, reread = reread
   ; TODO: should I make point maps for mesh, similar to what chris had done?
   ;
   for i = 0, nsteps do begin
-    write_sag, filename, ..., unitflag
+
   endfor
 
   stop
