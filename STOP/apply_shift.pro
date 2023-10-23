@@ -1,5 +1,5 @@
 ; Documentation
-function apply_shift, points, shifts, nomove = nomove, rev = rev
+function apply_shift, points, shifts, nomove = nomove, rev = rev, flag = flag
   compile_opt idl2
   ; Applies coordiate shift according to Zemax's order conventions
   ; dx, dy, dz (dz is preceding surface thickness)
@@ -33,6 +33,8 @@ function apply_shift, points, shifts, nomove = nomove, rev = rev
   trans = rebin(disp, 3, sz[2])
 
   case 1 of
+    keyword_set(flag): $
+      Rout = (Rfull # points) + trans
     keyword_set(nomove) and (~keyword_set(rev)): $
       Rout = Rfull # points
     (~keyword_set(nomove)) and (~keyword_set(rev)): $
@@ -42,5 +44,6 @@ function apply_shift, points, shifts, nomove = nomove, rev = rev
     (~keyword_set(nomove)) and keyword_set(rev): $
       Rout = (transpose(Rfull) # points) - trans
   endcase
+
   return, Rout
 end

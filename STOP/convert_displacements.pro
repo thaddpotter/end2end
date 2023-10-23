@@ -12,12 +12,11 @@ pro convert_displacements, reread = reread
   nsteps = 8
   data_file = sett.datapath + 'stop/ANSYS_disp.idl'
 
-  ; Other parameters
+  ; Zemax Mapping parameters
   osize = 0.05 ; Fractional Oversize for Sag Grid
-  ; Size of grid
   npoints = 512 ; Number of points on sag grid
-  ; note: Units for prescription and others must be the same!
   unitflag = 2 ; 0 for mm, 1 for cm, 2 for in, 3 for m
+  ; note: Units for prescription and others must be the same!
 
   ; ----------------------------------------------------------------
   ; Read Data into Structures
@@ -88,9 +87,9 @@ pro convert_displacements, reread = reread
   m2conic = -0.422335
 
   m1_control = [[0d, 16d, conic_z(0, 16, m1roc, m1conic)], $
-    [-11.8, 16d, conic_z(-11.8, 16, m1roc, m1conic)], $
-    [0d, 27.85d, conic_z(0, 27.85, m1roc, m1conic)], $
-    [0d, 4.2d, conic_z(0, 4.2, m1roc, m1conic)]]
+    [-11.85, 16d, conic_z(-11.85, 16, m1roc, m1conic)], $
+    [0d, 27.8d, conic_z(0, 27.8, m1roc, m1conic)], $
+    [0d, 4.325d, conic_z(0, 4.325, m1roc, m1conic)]]
   m2_control = [[0d, 3.3837d, conic_z(0, 3.3837, m2roc, m2conic)], $
     [0d, 6.1437d, conic_z(0, 6.1437, m2roc, m2conic)], $
     [2.75d, 3.3837d, conic_z(2.75, 3.3837, m2roc, m2conic)], $
@@ -106,14 +105,17 @@ pro convert_displacements, reread = reread
   opt_control *= 0.0254
 
   print, 'Calculating conversion from ANSYS frame to Zemax Frame...'
+  print, ''
+
   ; Calculate the coordinate conversion
   m1_test = [m1_struct[0].cx, m1_struct[0].cy, m1_struct[0].cz]
   m2_test = [m2_struct[0].cx, m2_struct[0].cy, m2_struct[0].cz]
   opt_test = [opt_struct[0].cx, opt_struct[0].cy, opt_struct[0].cz]
 
-  m1_shift = calc_frameshift(m1_test, m1_control)
-  m2_shift = calc_frameshift(m2_test, m2_control)
-  opt_shift = calc_frameshift(opt_test, opt_control)
+  m1_shift = calc_frameshift(m1_test, m1_control, /flag)
+  m2_shift = calc_frameshift(m2_test, m2_control, /flag)
+  opt_shift = calc_frameshift(opt_test, opt_control, $
+    guess = [-50, 170, 0, 0.1, 0.1, 0.1], /flag)
 
   ; Convert position and displacement data to local frame
   ; Assuming that the structures have the same number of time points here...
@@ -127,23 +129,43 @@ pro convert_displacements, reread = reread
   opt_points = n_elements(opt_struct[0].x)
   tsteps = n_elements(m1_struct)
 
-  local_m1 = apply_shift([m1_struct[0].x, m1_struct[0].y, m1_struct[0].z], m1_shift[0 : 5])
-  local_m2 = apply_shift([m2_struct[0].x, m2_struct[0].y, m2_struct[0].z], m2_shift[0 : 5])
-  local_opt = apply_shift([opt_struct[0].x, opt_struct[0].y, opt_struct[0].z], opt_shift[0 : 5])
+  ; Initial points in Zemax Initial Frame
+  m1_init = apply_shift([m1_struct[0].x, m1_struct[0].y, m1_struct[0].z], m1_shift[0 : 5], /flag)
+  m2_init = apply_shift([m2_struct[0].x, m2_struct[0].y, m2_struct[0].z], m2_shift[0 : 5], /flag)
+  opt_init = apply_shift([opt_struct[0].x, opt_struct[0].y, opt_struct[0].z], opt_shift[0 : 5], /flag)
 
-  locd_m1 = dblarr(3, m1_points, tsteps)
-  locd_m2 = dblarr(3, m2_points, tsteps)
-  locd_opt = dblarr(3, opt_points, tsteps)
+  ; Displaced points in Zemax Initial Frame
+  m1_disp = dblarr(3, m1_points, tsteps)
+  m2_disp = dblarr(3, m2_points, tsteps)
+  opt_disp = dblarr(3, opt_points, tsteps)
+
+  print, 'M1 displacement: '
+  print, '| Theta |  Phi  |  Psi  |   X   |   Y   |   Z   | RMS ERR(um) |'
+  print, m1_shift, format = '(6F8.3, F10.2)'
+  print, 'M2 displacement: '
+  print, '| Theta |  Phi  |  Psi  |   X   |   Y   |   Z   | RMS ERR(um) |'
+  print, m2_shift, format = '(6F8.3, F10.2)'
+  print, 'Optical bench displacement: '
+  print, '| Theta |  Phi  |  Psi  |   X   |   Y   |   Z   | RMS ERR(um) |'
+  print, opt_shift, format = '(6F8.3, F10.2)'
+  print, ''
 
   for i = 0, tsteps - 1 do begin
-    disp_m1 = [m1_struct[i].dx, m1_struct[i].dy, m1_struct[i].dz]
-    disp_m2 = [m2_struct[i].dx, m2_struct[i].dy, m2_struct[i].dz]
-    disp_opt = [opt_struct[i].dx, opt_struct[i].dy, opt_struct[i].dz]
+    ; Apply displacements
+    m1_tmp = [m1_struct[i].x + m1_struct[i].dx, $
+      m1_struct[i].y + m1_struct[i].dy, $
+      m1_struct[i].z + m1_struct[i].dz]
+    m2_tmp = [m2_struct[i].x + m2_struct[i].dx, $
+      m2_struct[i].y + m2_struct[i].dy, $
+      m2_struct[i].z + m2_struct[i].dz]
+    opt_tmp = [opt_struct[i].x + opt_struct[i].dx, $
+      opt_struct[i].y + opt_struct[i].dy, $
+      opt_struct[i].z + opt_struct[i].dz]
 
-    ; Displacements only need to be rotated
-    locd_m1[*, *, i] = apply_shift(disp_m1, m1_shift[0 : 5], /nomove)
-    locd_m2[*, *, i] = apply_shift(disp_m2, m2_shift[0 : 5], /nomove)
-    locd_opt[*, *, i] = apply_shift(disp_opt, opt_shift[0 : 5], /nomove)
+    ; Apply shift
+    m1_disp[*, *, i] = apply_shift(m1_tmp, m1_shift[0 : 5], /flag)
+    m2_disp[*, *, i] = apply_shift(m2_tmp, m2_shift[0 : 5], /flag)
+    opt_disp[*, *, i] = apply_shift(opt_tmp, opt_shift[0 : 5], /flag)
   endfor
 
   ; ----------------------------------------------------------------------
@@ -160,44 +182,27 @@ pro convert_displacements, reread = reread
   m2_err = m1_err
   opt_err = m1_err
 
-  ; List of residuals in the displaced frame, with xy coords
-  m1_omap = dblarr(3, m1_points, tsteps)
-  m2_omap = dblarr(3, m2_points, tsteps)
-  opt_omap = dblarr(3, opt_points, tsteps)
+  ; List of residuals in the displaced frame
+  m1_res = dblarr(3, m1_points, tsteps)
+  m2_res = dblarr(3, m2_points, tsteps)
+  opt_res = dblarr(3, opt_points, tsteps)
 
-  print, 'Calculating Local Displacements of M1, M2, and Opt...'
+  print, 'Calculating Thermal Displacements of M1, M2, and Opt...'
   for i = 0, tsteps - 1 do begin
-    ; Apply displacement
-    m1_tmp = local_m1 + locd_m1[*, *, i]
-    m2_tmp = local_m2 + locd_m2[*, *, i]
-    opt_tmp = local_opt + locd_opt[*, *, i]
-
     ; Calculate 6-D Displacement
-    m1_err[*, i] = calc_frameshift(local_m1, m1_tmp)
-    m2_err[*, i] = calc_frameshift(local_m2, m2_tmp)
-    opt_err[*, i] = calc_frameshift(local_opt, opt_tmp)
+    m1_err[*, i] = calc_frameshift(m1_init, m1_disp[*, *, i])
+    m2_err[*, i] = calc_frameshift(m2_init, m2_disp[*, *, i])
+    opt_err[*, i] = calc_frameshift(opt_init, opt_disp[*, *, i])
+
+    ; In the displaced coordinate frame, the 'perfect' coordinates are the same
+    ; as the local coordinates from earlier! (m1,m2,opt_init)
 
     ; Get Residuals in the displaced frame by:
-    ; Getting initial residuals in the initial frame
+    ; Getting initial residuals in the initial frame by subtracting mapped points from total
     ; Rotate to get new unit vectors, and project onto them by matrix multiplication
-    m1_res = (m1_tmp - apply_shift(local_m1, m1_err[0 : 5])) ## apply_shift(identity(3), m1_err[0 : 5], /nomove)
-    m2_res = (m2_tmp - apply_shift(local_m2, m2_err[0 : 5])) ## apply_shift(identity(3), m2_err[0 : 5], /nomove)
-    opt_res = (opt_tmp - apply_shift(local_opt, opt_err[0 : 5])) ## apply_shift(identity(3), opt_err[0 : 5], /nomove)
-
-    ; Apply x,y,z shift to the local frame data
-    ; Note: If we rotated the initial coords, then project along the new coordinates,
-    ; they will be back where they started!
-    m1_omap[*, *, i] = local_m1 + m1_res
-    m2_omap[*, *, i] = local_m2 + m2_res
-    opt_omap[*, *, i] = local_opt + opt_res
-
-    ; Calculate new z error by subtracting the change in "correct" surface height
-    ; from shifting in X and Y
-    ; Dont need to do this for the bench, since its flat nominally
-    m1_omap[2, *, i] += conic_z(local_m1[0, *], local_m1[1, *], m1roc, m1conic) - $
-      conic_z(m1_omap[0, *, i], m1_omap[2, *, i], m1roc, m1conic)
-    m2_omap[2, *, i] += conic_z(local_m2[0, *], local_m2[1, *], m2roc, m2conic) - $
-      conic_z(m2_omap[0, *, i], m2_omap[2, *, i], m2roc, m2conic)
+    m1_res[*, *, i] = (m1_disp[*, *, i] - apply_shift(m1_init, m1_err[0 : 5, i])) ## apply_shift(identity(3), m1_err[0 : 5, i], /nomove)
+    m2_res[*, *, i] = (m2_disp[*, *, i] - apply_shift(m2_init, m2_err[0 : 5, i])) ## apply_shift(identity(3), m2_err[0 : 5, i], /nomove)
+    opt_res[*, *, i] = (opt_disp[*, *, i] - apply_shift(opt_init, opt_err[0 : 5, i])) ## apply_shift(identity(3), opt_err[0 : 5, i], /nomove)
   endfor
 
   stop
@@ -205,29 +210,53 @@ pro convert_displacements, reread = reread
   ; Process displacements
   ; --------------------------------------------------------------------
   ; TODO:
-  ; Ask Chris about his residual tip-tilt calculations in displacements.pro
-  ; Figure out the interpolation calculations
-  ; Just use zernike_aperture?
+  ; Process list of displacements to get rectangular grid!
   ;
   ;
-  for i = 0, tsteps - 1 do begin
-    ; Apply displacement
-    m1_tmp = local_m1 + locd_m1[*, *, i]
-    m2_tmp = local_m2 + locd_m2[*, *, i]
-    opt_tmp = local_opt + locd_opt[*, *, i]
+  ;
+  ;
 
-    ; get new bounding rectangle
+  m1_saggrid = dblarr(3, m1_points, tsteps)
+  m2_saggrid = dblarr(3, m2_points, tsteps)
+  opt_saggrid = dblarr(3, opt_points, tsteps)
+
+  for i = 0, tsteps - 1 do begin
+    ; First, use the (x,y,z) displaced points to create a map of z errors on the initial points
+    ; Must eliminate the x and y errors before we interpolate ont a regular grid!
+
+    ; Make Triangulation of the x and y residuals (x+dx,y+dy)
+    triangulate,
+
+    ; Loop over points
+    for j = 0, m1_points do begin
+      ; Find which triangle we are in
+
+      ; If we are in one, then get new dz value
+      ; If we are outside, then extrapolate
+
+      ; Alternative: Single point extrapolate with tri_surf?
+    endfor
+
+    ; Now, we can interpolate our z errors on x and y!
+    ; get new boundaries/spacing for interpolation
+    ; edge effects in zemax are bad, so a 5% safety margin should be acceptable
     m1_x = (1 + osize) * minmax(m1_tmp[0, *, i])
+    m1_xstep = (m1_x[1] - m1_x[0]) / (npoints - 1)
+
     m2_x = (1 + osize) * minmax(m2_tmp[0, *, i])
+    m2_xstep = (m2_x[1] - m2_x[0]) / (npoints - 1)
+
     opt_x = (1 + osize) * minmax(opt_tmp[0, *, i])
+    opt_xstep = (opt_x[1] - opt_x[0]) / (npoints - 1)
 
     m1_y = (1 + osize) * minmax(m1_tmp[1, *, i])
-    m2_y = (1 + osize) * minmax(m2_tmp[1, *, i])
-    opt_y = (1 + osize) * minmax(opt_tmp[1, *, i])
+    m1_ystep = (m1_y[1] - m1_y[0]) / (npoints - 1)
 
-    triangulate, m1_tmp[0, *, i], m1_tmp[1, *, i], m1_tri, b = m1_bound
-    triangulate, m2_tmp[0, *, i], m2_tmp[1, *, i], m2_tri, b = m2_bound
-    triangulate, opt_tmp[0, *, i], opt_tmp[1, *, i], opt_tri, b = opt_bound
+    m2_y = (1 + osize) * minmax(m2_tmp[1, *, i])
+    m2_ystep = (m2_y[1] - m2_y[0]) / (npoints - 1)
+
+    opt_y = (1 + osize) * minmax(opt_tmp[1, *, i])
+    opt_ystep = (opt_y[1] - opt_y[0]) / (npoints - 1)
 
     ; Interpolate onto regular grid (coord shift for .grd later)
   endfor

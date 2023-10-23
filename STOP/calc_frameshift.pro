@@ -12,7 +12,7 @@ function frameshift_opt, params
   ;
 
   ; Variable import/setup
-  common frameshift_opt, input, output
+  common frameshift_opt, input, output, orderflag
 
   disp = double(params[3 : 5])
   angle = double(params[0 : 2])
@@ -36,30 +36,38 @@ function frameshift_opt, params
   trans = rebin(disp, 3, sz[2])
 
   Rfull = Rz # Ry # Rx
-  Rout = Rfull # (input + trans)
+  if orderflag then $
+    Rout = (Rfull # input) + trans else $
+    Rout = Rfull # (input + trans)
 
   return, total((Rout - output) ^ 2) / sz[2]
 end
 
-function calc_frameshift, r1, r2, guess = guess
+function calc_frameshift, r1, r2, guess = guess, flag = flag
   compile_opt idl2
   ; Performs a least squares fit for the rotation and displacement between two sets of points
 
   ; Return vector
   ; disp = [x,y,z,theta,phi,psi]
   ;
-  common frameshift_opt, input, output
+  common frameshift_opt, input, output, orderflag
 
   input = r1
   output = r2
+  if keyword_set(flag) then orderflag = 1 else orderflag = 0
 
   ; Minimization Settings
-  ftol = 1e-11 ; Fractional Tolerance
   if ~keyword_set(guess) then $
     guess = [0.0d, 0.0d, 0.0d, 0.1d, 0.1d, 0.1d] ; Initial Guess
-  xi = identity(6) ; Starting Direction Vector
+  ; Bounds on parameters
+  xbnd = [[-360, -360, -360, -10d, -10d, -10d], $
+    [360, 360, 360, 10d, 10d, 10d]]
+  ; Bound on function
+  gbnd = [[-1], [1e30]]
 
-  powell, guess, xi, ftol, fmin, 'frameshift_opt', /double, itmax = 1000
+  constrained_min, guess, xbnd, gbnd, 0, 'frameshift_opt', inform, epstop = 1e-6, limser = 100000
+  fmin = frameshift_opt(guess)
 
-  return, [guess, sqrt(fmin)]
+  ; Return error in RMS ppm
+  return, [guess, sqrt(fmin) * 1e6]
 end
