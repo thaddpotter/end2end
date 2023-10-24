@@ -1,6 +1,4 @@
-pro convert_displacements, reread = reread, map_opt = map_opt
-  ; Startup
-
+pro convert_displacements, reread = reread
   compile_opt idl2
   sett = e2e_load_settings()
 
@@ -12,10 +10,15 @@ pro convert_displacements, reread = reread, map_opt = map_opt
   nsteps = 8
   data_file = sett.datapath + 'stop/ANSYS_disp.idl'
 
+  plotdir = sett.plotpath + 'ansys/'
+  check_and_mkdir, plotdir
+
   ; Zemax Mapping parameters
-  osize = 0.05 ; Fractional Oversize for Sag Grid
+  osize = 0.00 ; Fractional Oversize for Sag Grid (1% adds ~ 2.5 radial pxls)
   npoints = 512 ; Number of points on sag grid
+  r = 254 ; How many radial pixels to keep for final output (Trims ~0.4% per pxl less than 256)
   unitflag = 2 ; 0 for mm, 1 for cm, 2 for in, 3 for m
+
   ; note: Units for prescription and others must be the same!
 
   ; ----------------------------------------------------------------
@@ -123,7 +126,6 @@ pro convert_displacements, reread = reread, map_opt = map_opt
   ; Structure is a bit annoying to use at this point, so getting an array of
   ; initial coordinates for each optic, and making an array of displacements
   ; through time
-  ;
   m1_points = n_elements(m1_struct[0].x)
   m2_points = n_elements(m2_struct[0].x)
   opt_points = n_elements(opt_struct[0].x)
@@ -199,21 +201,26 @@ pro convert_displacements, reread = reread, map_opt = map_opt
 
     ; Get Residuals in the displaced frame by:
     ; Getting initial residuals in the initial frame by subtracting mapped points from total
-    ; Rotate to get new unit vectors, and project onto them by matrix multiplication
-    m1_res[*, *, i] = (m1_disp[*, *, i] - apply_shift(m1_init, m1_err[0 : 5, i])) ## apply_shift(identity(3), m1_err[0 : 5, i], /nomove)
-    m2_res[*, *, i] = (m2_disp[*, *, i] - apply_shift(m2_init, m2_err[0 : 5, i])) ## apply_shift(identity(3), m2_err[0 : 5, i], /nomove)
-    opt_res[*, *, i] = (opt_disp[*, *, i] - apply_shift(opt_init, opt_err[0 : 5, i])) ## apply_shift(identity(3), opt_err[0 : 5, i], /nomove)
+    ; Reverse rotate to get unit vectors of he new coords, and project the displacements onto them with matrix multiplication
+    m1_res[*, *, i] = apply_shift(identity(3), m1_err[0 : 5, i], /nomove, /rev) # (m1_disp[*, *, i] - apply_shift(m1_init, m1_err[0 : 5, i]))
+
+    m2_res[*, *, i] = apply_shift(identity(3), m2_err[0 : 5, i], /nomove, /rev) # (m2_disp[*, *, i] - apply_shift(m2_init, m2_err[0 : 5, i]))
+
+    opt_res[*, *, i] = apply_shift(identity(3), opt_err[0 : 5, i], /nomove, /rev) # (opt_disp[*, *, i] - apply_shift(opt_init, opt_err[0 : 5, i]))
   endfor
 
   print, 'Average M1 displacement: '
-  print, '| Theta |  Phi  |  Psi  |   X   |   Y   |   Z   | RMS ERR(um) |'
+  print, '| Theta |  Phi  |  Psi  |   X   |   Y   |   Z   | RMS ERR(um) | '
   print, mean(m1_err, dimension = 2), format = '(6F8.3, F10.2)'
+  print, 'RMS Residual: ', 1e6 * mean(sqrt(total(m1_res ^ 2, 1))), ' um'
   print, 'Average M2 displacement: '
   print, '| Theta |  Phi  |  Psi  |   X   |   Y   |   Z   | RMS ERR(um) |'
   print, mean(m2_err, dimension = 2), format = '(6F8.3, F10.2)'
+  print, 'RMS Residual: ', 1e6 * mean(sqrt(total(m2_res ^ 2, 1))), ' um'
   print, 'Average Optical bench displacement: '
   print, '| Theta |  Phi  |  Psi  |   X   |   Y   |   Z   | RMS ERR(um) |'
   print, mean(opt_err, dimension = 2), format = '(6F8.3, F10.2)'
+  print, 'RMS Residual: ', 1e6 * mean(sqrt(total(opt_res ^ 2, 1))), ' um'
   print, ''
 
   ; --------------------------------------------------------------------
@@ -225,35 +232,37 @@ pro convert_displacements, reread = reread, map_opt = map_opt
   ; the map of ANSYS global to Zemax local, we have an intermediate
   ; interpolation
 
+  ; Get center of output grids
+  m1_c = [mean(m1_init[0, *]), mean(m1_init[1, *])]
+  m2_c = [mean(m2_init[0, *]), mean(m2_init[1, *])]
+
   ; edge effects in zemax are bad, so oversize the extrapolation area for the optical surfaces
-  m1_xlim = (1 + osize) * minmax(m1_init[0, *])
+  m1_xlim = m1_c[0] + (1 + osize) * [min(m1_init[0, *] - m1_c[0]), $
+    max(m1_init[0, *]) - m1_c[0]]
+  m1_ylim = m1_c[1] + (1 + osize) * [min(m1_init[1, *] - m1_c[1]), $
+    max(m1_init[1, *]) - m1_c[1]]
+  m2_xlim = m2_c[0] + (1 + osize) * [min(m2_init[0, *] - m2_c[0]), $
+    max(m2_init[0, *]) - m2_c[0]]
+  m2_ylim = m2_c[1] + (1 + osize) * [min(m2_init[1, *] - m2_c[1]), $
+    max(m2_init[1, *]) - m2_c[1]]
+
   m1_xstep = (m1_xlim[1] - m1_xlim[0]) / (npoints - 1)
-  m1_x = dindgen(npoints, start = m1_xlim[0], increment = m1_xstep)
-
-  m1_ylim = (1 + osize) * minmax(m1_init[1, *])
   m1_ystep = (m1_ylim[1] - m1_ylim[0]) / (npoints - 1)
-  m1_y = dindgen(npoints, start = m1_ylim[0], increment = m1_ystep)
-
-  m2_xlim = (1 + osize) * minmax(m2_init[0, *])
   m2_xstep = (m2_xlim[1] - m2_xlim[0]) / (npoints - 1)
-  m2_x = dindgen(npoints, start = m2_xlim[0], increment = m2_xstep)
-
-  m2_ylim = (1 + osize) * minmax(m2_init[1, *])
   m2_ystep = (m2_ylim[1] - m2_ylim[0]) / (npoints - 1)
+
+  m1_x = dindgen(npoints, start = m1_xlim[0], increment = m1_xstep)
+  m1_y = dindgen(npoints, start = m1_ylim[0], increment = m1_ystep)
+  m2_x = dindgen(npoints, start = m2_xlim[0], increment = m2_xstep)
   m2_y = dindgen(npoints, start = m2_ylim[0], increment = m2_ystep)
 
   ; Output: Regularly gridded map of z errors over the aperture
   m1_sag = dblarr(npoints, npoints, tsteps)
   m2_sag = dblarr(npoints, npoints, tsteps)
 
-  ; Opt has a lot of points, so exclude unless needed
-  if keyword_set(map_opt) then begin
-    opt_x = dindgen(npoints, start = min(opt_init[0, *]), increment = $
-      (max(opt_init[0, *]) - min(opt_init[0, *])) / (npoints - 1))
-    opt_y = dindgen(npoints, start = min(opt_init[1, *]), increment = $
-      (max(opt_init[1, *]) - min(opt_init[1, *])) / (npoints - 1))
-    opt_sag = dblarr(npoints, npoints, tsteps)
-  endif
+  ; Make aperture mask for saggrid
+  xyimage, npoints, npoints, xim, yim, rim, /quadrant
+  masksel = where(rim lt r, complement = nmasksel)
 
   print, 'Calculating Surface Error maps...'
   for i = 0, tsteps - 1 do begin
@@ -267,30 +276,34 @@ pro convert_displacements, reread = reread, map_opt = map_opt
     triangulate, m1_init[0, *], m1_init[1, *], m1_tr, m1_b
     triangulate, m2_init[0, *], m2_init[1, *], m2_tr, m2_b
 
-    m1_sag[*, *, i] = trigrid(m1_init[0, *], m1_init[1, *], $
+    m1_tmp = trigrid(m1_init[0, *], m1_init[1, *], min_value = 1e-8, $
       m1_zprime - m1_init[2, *], m1_tr, extra = m1_b, xout = m1_x, yout = m1_y)
-    m2_sag[*, *, i] = trigrid(m2_init[0, *], m2_init[1, *], $
+    m2_tmp = trigrid(m2_init[0, *], m2_init[1, *], min_value = 1e-8, $
       m2_zprime - m2_init[2, *], m2_tr, extra = m2_b, xout = m2_x, yout = m2_y)
 
-    if keyword_set(map_opt) then begin
-      opt_zprime = ineff_interp(opt_init + opt_res[*, *, i], opt_init)
-      triangulate, opt_init[0, *], opt_init[1, *], opt_tr, opt_b, tolerance = 1e-10
-      opt_sag[*, *, i] = trigrid(opt_init[0, *], opt_init[1, *], opt_zprime - opt_init[2, *], opt_tr, extra = opt_b, xout = opt_x, yout = opt_y)
-    endif
+    m1_sag[*, *, i] = m1_tmp
+    m2_sag[*, *, i] = m2_tmp
   endfor
   print, ''
   print, 'DONE'
   print, ''
 
-  stop
   ; --------------------------------------------------------------------
-  ; Write output files, make plots
+  ; Make plots, write output files
   ; -------------------------------------------------------------------
   ;
-  ; TODO: should I make point maps for mesh, similar to what chris had done?
   ;
-  for i = 0, nsteps do begin
 
+  for i = 0, tsteps - 1 do begin
+    ; Residual Maps
+
+    ; M1
+    plotfile = plotdir + 'M1_resid_' + n2s(i)
+    implot, 1e6 * m1_sag[*, *, i], plotfile, cbtitle = 'um', ncolor = 255
+
+    ; M2
+    plotfile = plotdir + 'M2_resid_' + n2s(i)
+    implot, 1e6 * m2_sag[*, *, i], plotfile, cbtitle = 'um', ncolor = 255
   endfor
 
   stop

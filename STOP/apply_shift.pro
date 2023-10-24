@@ -33,8 +33,10 @@ function apply_shift, points, shifts, nomove = nomove, rev = rev, flag = flag
   trans = rebin(disp, 3, sz[2])
 
   case 1 of
-    keyword_set(flag): $
+    keyword_set(flag) and (~keyword_set(rev)): $
       Rout = (Rfull # points) + trans
+    keyword_set(flag) and keyword_set(rev): $
+      print, 'Invalid Keyword combination'
     keyword_set(nomove) and (~keyword_set(rev)): $
       Rout = Rfull # points
     (~keyword_set(nomove)) and (~keyword_set(rev)): $

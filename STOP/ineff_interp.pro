@@ -20,8 +20,8 @@ function ineff_interp, surf_points, eval_points
   ; to fail, I grab the nearest point and use its value to avoid NaNs
   zout = dblarr(1, n_elements(x1))
   for i = 0, n_elements(x1) - 1 do begin
-    dx = min(xout - x1[i], ix)
-    dy = min(yout - y1[i], iy)
+    dx = min(abs(xout - x1[i]), ix)
+    dy = min(abs(yout - y1[i]), iy)
     zout[i] = bigmap[ix, iy]
   endfor
 
