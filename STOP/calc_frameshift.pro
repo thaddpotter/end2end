@@ -1,6 +1,7 @@
 function frameshift_opt, params
   compile_opt idl2
   ; Optimization function for calculated coordinate fram transformations
+  ; Objective function is the mean square error of all points
   ; -----------------------------------------------
   ; Arguments:
   ; input: matrix of input points

@@ -1,4 +1,4 @@
-pro convert_displacements, reread = reread
+pro convert_displacements, reread = reread, map_opt = map_opt
   ; Startup
 
   compile_opt idl2
@@ -205,61 +205,82 @@ pro convert_displacements, reread = reread
     opt_res[*, *, i] = (opt_disp[*, *, i] - apply_shift(opt_init, opt_err[0 : 5, i])) ## apply_shift(identity(3), opt_err[0 : 5, i], /nomove)
   endfor
 
-  stop
+  print, 'Average M1 displacement: '
+  print, '| Theta |  Phi  |  Psi  |   X   |   Y   |   Z   | RMS ERR(um) |'
+  print, mean(m1_err, dimension = 2), format = '(6F8.3, F10.2)'
+  print, 'Average M2 displacement: '
+  print, '| Theta |  Phi  |  Psi  |   X   |   Y   |   Z   | RMS ERR(um) |'
+  print, mean(m2_err, dimension = 2), format = '(6F8.3, F10.2)'
+  print, 'Average Optical bench displacement: '
+  print, '| Theta |  Phi  |  Psi  |   X   |   Y   |   Z   | RMS ERR(um) |'
+  print, mean(opt_err, dimension = 2), format = '(6F8.3, F10.2)'
+  print, ''
+
   ; --------------------------------------------------------------------
   ; Process displacements
   ; --------------------------------------------------------------------
-  ; TODO:
-  ; Process list of displacements to get rectangular grid!
-  ;
-  ;
-  ;
-  ;
+  ; We want to get a map of z errors over the aperture, but we currently have:
+  ; x, y, and z displacements
+  ; To get rid of the x and y replacements without relying on the accuracy of
+  ; the map of ANSYS global to Zemax local, we have an intermediate
+  ; interpolation
 
-  m1_saggrid = dblarr(3, m1_points, tsteps)
-  m2_saggrid = dblarr(3, m2_points, tsteps)
-  opt_saggrid = dblarr(3, opt_points, tsteps)
+  ; edge effects in zemax are bad, so oversize the extrapolation area for the optical surfaces
+  m1_xlim = (1 + osize) * minmax(m1_init[0, *])
+  m1_xstep = (m1_xlim[1] - m1_xlim[0]) / (npoints - 1)
+  m1_x = dindgen(npoints, start = m1_xlim[0], increment = m1_xstep)
 
+  m1_ylim = (1 + osize) * minmax(m1_init[1, *])
+  m1_ystep = (m1_ylim[1] - m1_ylim[0]) / (npoints - 1)
+  m1_y = dindgen(npoints, start = m1_ylim[0], increment = m1_ystep)
+
+  m2_xlim = (1 + osize) * minmax(m2_init[0, *])
+  m2_xstep = (m2_xlim[1] - m2_xlim[0]) / (npoints - 1)
+  m2_x = dindgen(npoints, start = m2_xlim[0], increment = m2_xstep)
+
+  m2_ylim = (1 + osize) * minmax(m2_init[1, *])
+  m2_ystep = (m2_ylim[1] - m2_ylim[0]) / (npoints - 1)
+  m2_y = dindgen(npoints, start = m2_ylim[0], increment = m2_ystep)
+
+  ; Output: Regularly gridded map of z errors over the aperture
+  m1_sag = dblarr(npoints, npoints, tsteps)
+  m2_sag = dblarr(npoints, npoints, tsteps)
+
+  ; Opt has a lot of points, so exclude unless needed
+  if keyword_set(map_opt) then begin
+    opt_x = dindgen(npoints, start = min(opt_init[0, *]), increment = $
+      (max(opt_init[0, *]) - min(opt_init[0, *])) / (npoints - 1))
+    opt_y = dindgen(npoints, start = min(opt_init[1, *]), increment = $
+      (max(opt_init[1, *]) - min(opt_init[1, *])) / (npoints - 1))
+    opt_sag = dblarr(npoints, npoints, tsteps)
+  endif
+
+  print, 'Calculating Surface Error maps...'
   for i = 0, tsteps - 1 do begin
-    ; First, use the (x,y,z) displaced points to create a map of z errors on the initial points
-    ; Must eliminate the x and y errors before we interpolate ont a regular grid!
+    counter, i + 1, tsteps, 'Timestep '
+    ; Create a representation of the surface with residuals applied, and interpolate those heights onto the initial x,y values
+    ; Note, in the displaced frame, the reference surface is at the same place
+    m1_zprime = ineff_interp(m1_init + m1_res[*, *, i], m1_init)
+    m2_zprime = ineff_interp(m2_init + m2_res[*, *, i], m2_init)
 
-    ; Make Triangulation of the x and y residuals (x+dx,y+dy)
-    triangulate,
+    ; Interpolate new z errors onto a regular grid
+    triangulate, m1_init[0, *], m1_init[1, *], m1_tr, m1_b
+    triangulate, m2_init[0, *], m2_init[1, *], m2_tr, m2_b
 
-    ; Loop over points
-    for j = 0, m1_points do begin
-      ; Find which triangle we are in
+    m1_sag[*, *, i] = trigrid(m1_init[0, *], m1_init[1, *], $
+      m1_zprime - m1_init[2, *], m1_tr, extra = m1_b, xout = m1_x, yout = m1_y)
+    m2_sag[*, *, i] = trigrid(m2_init[0, *], m2_init[1, *], $
+      m2_zprime - m2_init[2, *], m2_tr, extra = m2_b, xout = m2_x, yout = m2_y)
 
-      ; If we are in one, then get new dz value
-      ; If we are outside, then extrapolate
-
-      ; Alternative: Single point extrapolate with tri_surf?
-    endfor
-
-    ; Now, we can interpolate our z errors on x and y!
-    ; get new boundaries/spacing for interpolation
-    ; edge effects in zemax are bad, so a 5% safety margin should be acceptable
-    m1_x = (1 + osize) * minmax(m1_tmp[0, *, i])
-    m1_xstep = (m1_x[1] - m1_x[0]) / (npoints - 1)
-
-    m2_x = (1 + osize) * minmax(m2_tmp[0, *, i])
-    m2_xstep = (m2_x[1] - m2_x[0]) / (npoints - 1)
-
-    opt_x = (1 + osize) * minmax(opt_tmp[0, *, i])
-    opt_xstep = (opt_x[1] - opt_x[0]) / (npoints - 1)
-
-    m1_y = (1 + osize) * minmax(m1_tmp[1, *, i])
-    m1_ystep = (m1_y[1] - m1_y[0]) / (npoints - 1)
-
-    m2_y = (1 + osize) * minmax(m2_tmp[1, *, i])
-    m2_ystep = (m2_y[1] - m2_y[0]) / (npoints - 1)
-
-    opt_y = (1 + osize) * minmax(opt_tmp[1, *, i])
-    opt_ystep = (opt_y[1] - opt_y[0]) / (npoints - 1)
-
-    ; Interpolate onto regular grid (coord shift for .grd later)
+    if keyword_set(map_opt) then begin
+      opt_zprime = ineff_interp(opt_init + opt_res[*, *, i], opt_init)
+      triangulate, opt_init[0, *], opt_init[1, *], opt_tr, opt_b, tolerance = 1e-10
+      opt_sag[*, *, i] = trigrid(opt_init[0, *], opt_init[1, *], opt_zprime - opt_init[2, *], opt_tr, extra = opt_b, xout = opt_x, yout = opt_y)
+    endif
   endfor
+  print, ''
+  print, 'DONE'
+  print, ''
 
   stop
   ; --------------------------------------------------------------------
