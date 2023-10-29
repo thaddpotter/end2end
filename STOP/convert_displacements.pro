@@ -1,4 +1,4 @@
-pro convert_displacements, reread = reread
+pro convert_displacements, folder, reread = reread
   compile_opt idl2
   sett = e2e_load_settings()
 
@@ -8,9 +8,12 @@ pro convert_displacements, reread = reread
   basepath = sett.tdpath + 'ansys/data_export/'
   ntimes = n_elements(time_tags)
   nsteps = 8
-  data_file = sett.datapath + 'stop/ANSYS_disp.idl'
 
-  plotdir = sett.plotpath + 'ansys/'
+  check_and_mkdir = sett.datapath + 'stop/'
+  data_file = sett.datapath + 'stop/' + folder + 'ANSYS_disp.idl'
+
+  folder = strjoin([folder, '/'])
+  plotdir = sett.plotpath + 'ansys/' + folder
   check_and_mkdir, plotdir
 
   ; Zemax Mapping parameters
@@ -25,14 +28,14 @@ pro convert_displacements, reread = reread
   ; Read Data into Structures
   ; ----------------------------------------------------------------
   if ((not file_test(data_file)) or keyword_set(reread)) then begin
-    print, 'Reading Data From: ' + basepath
+    print, 'Reading Data From: ' + basepath + folder
 
     ; Fill M1 Struct
     ; Loop over windows
     for j = 0, ntimes - 1 do begin
       ; Loop over time steps
       for k = 1, nsteps do begin
-        file = basepath + part_tags[0] + '_' + time_tags[j] + n2s(k) + '.out'
+        file = basepath + folder + part_tags[0] + '_' + time_tags[j] + n2s(k) + '.out'
         if file_test(file) then begin
           tmp = read_displacements(file)
           ; If Data struct exists, set equal to tmp, else concatenate
@@ -48,7 +51,7 @@ pro convert_displacements, reread = reread
     for j = 0, ntimes - 1 do begin
       ; Loop over time steps
       for k = 1, nsteps do begin
-        file = basepath + part_tags[1] + '_' + time_tags[j] + n2s(k) + '.out'
+        file = basepath + folder + part_tags[1] + '_' + time_tags[j] + n2s(k) + '.out'
         if file_test(file) then begin
           tmp = read_displacements(file)
           ; If Data struct exists, set equal to tmp, else concatenate
@@ -64,7 +67,7 @@ pro convert_displacements, reread = reread
     for j = 0, ntimes - 1 do begin
       ; Loop over time steps
       for k = 1, nsteps do begin
-        file = basepath + part_tags[2] + '_' + time_tags[j] + n2s(k) + '.out'
+        file = basepath + folder + part_tags[2] + '_' + time_tags[j] + n2s(k) + '.out'
         if file_test(file) then begin
           tmp = read_displacements(file)
           ; If Data struct exists, set equal to tmp, else concatenate
@@ -178,6 +181,8 @@ pro convert_displacements, reread = reread
   ; the displacements over time and get the transformation that was applied to
   ; get there
   ;
+  ; Note: in the displaced coordinate frame, the 'perfect' coordinates are the
+  ; same as the local coordinates from earlier! (m1,m2,opt_init)
 
   ; Transformation parameters from the nominal to displaced frame
   m1_err = dblarr(n_elements(m1_shift), tsteps)
@@ -196,9 +201,6 @@ pro convert_displacements, reread = reread
     m2_err[*, i] = calc_frameshift(m2_init, m2_disp[*, *, i])
     opt_err[*, i] = calc_frameshift(opt_init, opt_disp[*, *, i])
 
-    ; In the displaced coordinate frame, the 'perfect' coordinates are the same
-    ; as the local coordinates from earlier! (m1,m2,opt_init)
-
     ; Get Residuals in the displaced frame by:
     ; Getting initial residuals in the initial frame by subtracting mapped points from total
     ; Reverse rotate to get unit vectors of he new coords, and project the displacements onto them with matrix multiplication
@@ -208,6 +210,9 @@ pro convert_displacements, reread = reread
 
     opt_res[*, *, i] = apply_shift(identity(3), opt_err[0 : 5, i], /nomove, /rev) # (opt_disp[*, *, i] - apply_shift(opt_init, opt_err[0 : 5, i]))
   endfor
+
+  ; When running the standard fit, I tend to get a fair amount of residual tilt in the off-axis direction
+  ; After tightening tolerances, I got rid of some of it, but the best way to do this may be to close the loop and try to minimize the low order zernikes in the fit
 
   print, 'Average M1 displacement: '
   print, '| Theta |  Phi  |  Psi  |   X   |   Y   |   Z   | RMS ERR(um) | '
@@ -224,7 +229,7 @@ pro convert_displacements, reread = reread
   print, ''
 
   ; --------------------------------------------------------------------
-  ; Process displacements
+  ; Interpolate and Calculate Sag Surface
   ; --------------------------------------------------------------------
   ; We want to get a map of z errors over the aperture, but we currently have:
   ; x, y, and z displacements
@@ -262,49 +267,117 @@ pro convert_displacements, reread = reread
 
   ; Make aperture mask for saggrid
   xyimage, npoints, npoints, xim, yim, rim, /quadrant
-  masksel = where(rim lt r, complement = nmasksel)
+  masksel = where((rim lt r), complement = nmasksel)
+  mask = 0 * rim
+  mask[masksel] = 1
 
   print, 'Calculating Surface Error maps...'
-  for i = 0, tsteps - 1 do begin
-    counter, i + 1, tsteps, 'Timestep '
-    ; Create a representation of the surface with residuals applied, and interpolate those heights onto the initial x,y values
-    ; Note, in the displaced frame, the reference surface is at the same place
-    m1_zprime = ineff_interp(m1_init + m1_res[*, *, i], m1_init)
-    m2_zprime = ineff_interp(m2_init + m2_res[*, *, i], m2_init)
+  ; for i = 0, tsteps - 1 do begin
+  i = 0
+  counter, i + 1, tsteps, 'Timestep '
+  ; Create a representation of the surface with residuals applied, and interpolate those heights onto the initial x,y values
+  ; Note, in the displaced frame, the reference surface is at the same place
+  m1_zprime = ineff_interp(m1_init + m1_res[*, *, i], m1_init)
+  m2_zprime = ineff_interp(m2_init + m2_res[*, *, i], m2_init)
 
-    ; Interpolate new z errors onto a regular grid
-    triangulate, m1_init[0, *], m1_init[1, *], m1_tr, m1_b
-    triangulate, m2_init[0, *], m2_init[1, *], m2_tr, m2_b
+  ; Interpolate new z errors onto a regular grid
+  triangulate, m1_init[0, *], m1_init[1, *], m1_tr, m1_b
+  triangulate, m2_init[0, *], m2_init[1, *], m2_tr, m2_b
 
-    m1_tmp = trigrid(m1_init[0, *], m1_init[1, *], min_value = 1e-8, $
-      m1_zprime - m1_init[2, *], m1_tr, extra = m1_b, xout = m1_x, yout = m1_y)
-    m2_tmp = trigrid(m2_init[0, *], m2_init[1, *], min_value = 1e-8, $
-      m2_zprime - m2_init[2, *], m2_tr, extra = m2_b, xout = m2_x, yout = m2_y)
+  ; Get sag surfaces in microns
+  m1_sag[*, *, i] = trigrid(m1_init[0, *], m1_init[1, *], $
+    1e6 * (m1_zprime - m1_init[2, *]), m1_tr, extra = m1_b, xout = m1_x, yout = m1_y)
+  m2_sag[*, *, i] = trigrid(m2_init[0, *], m2_init[1, *], $
+    1e6 * (m2_zprime - m2_init[2, *]), m2_tr, extra = m2_b, xout = m2_x, yout = m2_y)
 
-    m1_sag[*, *, i] = m1_tmp
-    m2_sag[*, *, i] = m2_tmp
-  endfor
-  print, ''
-  print, 'DONE'
-  print, ''
+  ; what if we dont do the interp?
+  m1_zout = trigrid(m1_init[0, *], m1_init[1, *], $
+    1e6 * (m1_res[2, *]), m1_tr, extra = m1_b, xout = m1_x, yout = m1_y)
+  m2_zout = trigrid(m2_init[0, *], m2_init[1, *], $
+    1e6 * (m2_res[2, *]), m2_tr, extra = m2_b, xout = m2_x, yout = m2_y)
+
+  ; and what do the x and y shifts look like?
+  m1_xout = trigrid(m1_init[0, *], m1_init[1, *], $
+    1e6 * (m1_res[0, *]), m1_tr, extra = m1_b, xout = m1_x, yout = m1_y)
+  m2_xout = trigrid(m2_init[0, *], m2_init[1, *], $
+    1e6 * (m2_res[0, *]), m2_tr, extra = m2_b, xout = m2_x, yout = m2_y)
+  m1_yout = trigrid(m1_init[0, *], m1_init[1, *], $
+    1e6 * (m1_res[1, *]), m1_tr, extra = m1_b, xout = m1_x, yout = m1_y)
+  m2_yout = trigrid(m2_init[0, *], m2_init[1, *], $
+    1e6 * (m2_res[1, *]), m2_tr, extra = m2_b, xout = m2_x, yout = m2_y)
+
+  ; What if instead, we subtract all residual TTP?
+  nz = 24
+  m1_fitmap = zernike_fit_aperture(m1_zout, mask, nz, zernike_cf = mapcf)
+  m1_interp = zernike_fit_aperture(m1_sag[*, *, i], mask, nz, zernike_cf = map_int_cf)
+
+  ttpmap = m1_zout
+  ttpmap -= mapcf[0] * ZERNIKE_APERTURE(1, mask)
+  ttpmap -= mapcf[1] * ZERNIKE_APERTURE(2, mask)
+  ttpmap -= mapcf[2] * ZERNIKE_APERTURE(3, mask)
+
+  ttp_interp_map = m1_sag[*, *, i]
+  ttp_interp_map -= map_int_cf[0] * ZERNIKE_APERTURE(1, mask)
+  ttp_interp_map -= map_int_cf[1] * ZERNIKE_APERTURE(2, mask)
+  ttp_interp_map -= map_int_cf[2] * ZERNIKE_APERTURE(3, mask)
 
   ; --------------------------------------------------------------------
-  ; Make plots, write output files
+  ; Make plots
   ; -------------------------------------------------------------------
   ;
   ;
 
-  for i = 0, tsteps - 1 do begin
-    ; Residual Maps
+  ; lmax = max(sqrt(m1_xout ^ 2 + m1_yout ^ 2))
+  ; scale = (lmax * 1e-6) / 0.6
+  ; m1_xout[nmasksel] = 0
+  ; m1_yout[nmasksel] = 0
+  ; plot_field, m1_xout, m1_yout, length = 30 * scale, title = 'X and Y ;Displacements: 30x Scale'
 
-    ; M1
-    plotfile = plotdir + 'M1_resid_' + n2s(i)
-    implot, 1e6 * m1_sag[*, *, i], plotfile, cbtitle = 'um', ncolor = 255
+  ; M1
+  plotfile = plotdir + 'M1_Rawx_' + n2s(i)
+  implot, 1e3 * m1_xout, plotfile, cbtitle = 'nm', ncolor = 255, $
+    blackout = nmasksel, title = ' M1 Raw X error'
 
-    ; M2
-    plotfile = plotdir + 'M2_resid_' + n2s(i)
-    implot, 1e6 * m2_sag[*, *, i], plotfile, cbtitle = 'um', ncolor = 255
-  endfor
+  plotfile = plotdir + 'M1_Rawy_' + n2s(i)
+  implot, 1e3 * m1_yout, plotfile, cbtitle = 'nm', ncolor = 255, $
+    blackout = nmasksel, title = 'M1 Raw Y error'
 
+  plotfile = plotdir + 'M1_Rawz_' + n2s(i)
+  implot, 1e3 * m1_zout, plotfile, cbtitle = 'nm', ncolor = 255, $
+    blackout = nmasksel, title = 'M1 Raw Z error'
+
+  plotfile = plotdir + 'M1_zinterp_' + n2s(i)
+  implot, 1e3 * m1_sag[*, *, i], plotfile, cbtitle = 'nm', ncolor = 255, $
+    blackout = nmasksel, title = 'M1 Interpolated Z error'
+
+  plotfile = plotdir + 'M1_TTP_' + n2s(i)
+  implot, 1e3 * ttpmap, plotfile, cbtitle = 'nm', ncolor = 255, $
+    blackout = nmasksel, title = 'M1 Raw Z Residual, TTP Subtracted'
+
+  plotfile = plotdir + 'M1_zinterp_TTP_' + n2s(i)
+  implot, 1e3 * ttp_interp_map, plotfile, cbtitle = 'nm', ncolor = 255, $
+    blackout = nmasksel, title = 'M1 Interpolated Z Residuals, TTP Subtracted'
+
+  ; M2
+  plotfile = plotdir + 'M2_Rawx_' + n2s(i)
+  implot, 1e3 * m2_xout, plotfile, cbtitle = 'nm', ncolor = 255, $
+    blackout = nmasksel, title = 'M2 Raw X error'
+
+  plotfile = plotdir + 'm2_Rawy_' + n2s(i)
+  implot, 1e3 * m2_yout, plotfile, cbtitle = 'nm', ncolor = 255, $
+    blackout = nmasksel, title = 'M2 Raw Y error'
+
+  plotfile = plotdir + 'm2_Rawz_' + n2s(i)
+  implot, 1e3 * m2_zout, plotfile, cbtitle = 'nm', ncolor = 255, $
+    blackout = nmasksel, title = 'M2 Raw Z error'
+
+  plotfile = plotdir + 'm2_zinterp_' + n2s(i)
+  implot, 1e3 * m2_sag[*, *, i], plotfile, cbtitle = 'nm', ncolor = 255, $
+    blackout = nmasksel, title = 'M2 Interpolated Z error'
+
+  ; endfor
+  print, ''
+  print, 'DONE'
+  print, ''
   stop
 end

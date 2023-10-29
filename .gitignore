@@ -4,3 +4,7 @@ plots
 
 #Ignore flight data
 data/flight
+
+#ignore idl binaries
+*.idl
+*.sav
