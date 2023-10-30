@@ -1,4 +1,4 @@
-function read_displacements, file
+function read_displacements, file, wedge = wedge
   ; Returns structure!
   compile_opt idl2
 
@@ -23,14 +23,16 @@ function read_displacements, file
   readf, 1, line
 
   ; Read control point data
-  readf, 1, line
-  carr = fix(strsplit(line, ' ', /extract), type = 5)
-
-  for i = 1, 3 do begin
+  if (~keyword_set(wedge)) then begin
     readf, 1, line
-    tmp = fix(strsplit(line, ' ', /extract), type = 5)
-    carr = [[carr], [tmp]]
-  endfor
+    carr = fix(strsplit(line, ' ', /extract), type = 5)
+
+    for i = 1, 3 do begin
+      readf, 1, line
+      tmp = fix(strsplit(line, ' ', /extract), type = 5)
+      carr = [[carr], [tmp]]
+    endfor
+  endif
 
   ; Discard data header lines for displacement data
   readf, 1, line
@@ -49,19 +51,30 @@ function read_displacements, file
   close, 1
 
   ; Write to structure
-  struct = {time: time, $
-    tstep: tstep, $
-    npoints: n_elements(disparr[*, 0]), $
-    cx: carr[0, *], $
-    cy: carr[1, *], $
-    cz: carr[2, *], $
-    x: disparr[0, *], $
-    y: disparr[1, *], $
-    z: disparr[2, *], $
-    dx: disparr[3, *], $
-    dy: disparr[4, *], $
-    dz: disparr[5, *]}
-
+  if (~keyword_set(wedge)) then begin
+    struct = {time: time, $
+      tstep: tstep, $
+      npoints: n_elements(disparr[*, 0]), $
+      cx: carr[0, *], $
+      cy: carr[1, *], $
+      cz: carr[2, *], $
+      x: disparr[0, *], $
+      y: disparr[1, *], $
+      z: disparr[2, *], $
+      dx: disparr[3, *], $
+      dy: disparr[4, *], $
+      dz: disparr[5, *]}
+  endif else begin
+    struct = {time: time, $
+      tstep: tstep, $
+      npoints: n_elements(disparr[*, 0]), $
+      x: disparr[0, *], $
+      y: disparr[1, *], $
+      z: disparr[2, *], $
+      dx: disparr[3, *], $
+      dy: disparr[4, *], $
+      dz: disparr[5, *]}
+  endelse
   print, 'READ: ' + file
   return, struct
 end

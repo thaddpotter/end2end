@@ -46,12 +46,12 @@ end
 
 function frameshift_zonly, params
   compile_opt idl2
-  ; Optimization function for calculated coordinate fram transformations
-  ; Objective function is the RMS Z error
+  ; Optimization function for calculated coordinate frame transformations
+  ; Zonly - Maps planar set of points onto the xy plane, with the average
+  ; position at the origin
   ; -----------------------------------------------
   ; Arguments:
   ; input: matrix of input points
-  ; output: matrix of output points
   ; ----------------------------------------------
   ; Since this will also be used for calcuating in the Zemax frame, uses the following order convention:
   ; dx, dy, dz (dz is preceding surface thickness)
@@ -59,9 +59,8 @@ function frameshift_zonly, params
   ;
 
   ; Variable import/setup
-  common frameshift_opt, input, output, orderflag
+  common frameshift_opt, input
 
-  disp = double(params[3 : 5])
   angle = double(params[0 : 2])
 
   ; Convert angles to radians
@@ -80,14 +79,14 @@ function frameshift_zonly, params
 
   ; Make translation matrix
   sz = size(input)
-  trans = rebin(disp, 3, sz[2])
 
   Rfull = Rz # Ry # Rx
-  if orderflag then $
-    Rout = (Rfull # input) + trans else $
-    Rout = Rfull # (input + trans)
+  Rout = Rfull # input
 
-  return, 1e6 * sqrt(total((Rout[2, *] - output[2, *]) ^ 2) / sz[2])
+  trans = rebin(mean(Rout, dimension = 2), 3, sz[2])
+  Rout -= trans
+
+  return, 1e6 * sqrt(total((Rout[2, *] ^ 2)) / sz[2])
 end
 
 function calc_frameshift, r1, r2, guess = guess, flag = flag, zonly = zonly
@@ -113,10 +112,10 @@ function calc_frameshift, r1, r2, guess = guess, flag = flag, zonly = zonly
   gbnd = [[-1], [1e30]]
 
   if keyword_set(zonly) then begin
-    constrained_min, guess, xbnd, gbnd, 0, 'frameshift_zonly', inform, epstop = 1e-15, limser = 100000, nstop = 100
+    constrained_min, guess, xbnd, gbnd, 0, 'frameshift_zonly', inform, epstop = 1e-18, limser = 100000, nstop = 100
     fmin = frameshift_zonly(guess)
   endif else begin
-    constrained_min, guess, xbnd, gbnd, 0, 'frameshift_opt', inform, epstop = 1e-15, limser = 100000, nstop = 100
+    constrained_min, guess, xbnd, gbnd, 0, 'frameshift_opt', inform, epstop = 1e-18, limser = 100000, nstop = 100
     fmin = frameshift_opt(guess)
   endelse
 

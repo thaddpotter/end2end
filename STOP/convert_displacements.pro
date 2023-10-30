@@ -3,18 +3,21 @@ pro convert_displacements, folder, reread = reread
   sett = e2e_load_settings()
 
   ; Path and tag setup
-  part_tags = ['M1', 'M2', 'OPT']
+  part_tags = ['M1', 'M2', 'OPT', 'wedge']
   time_tags = ['am', 'pm']
   basepath = sett.tdpath + 'ansys/data_export/'
   ntimes = n_elements(time_tags)
   nsteps = 8
 
-  check_and_mkdir = sett.datapath + 'stop/'
+  check_and_mkdir, sett.datapath + 'stop/'
   data_file = sett.datapath + 'stop/' + folder + 'ANSYS_disp.idl'
 
   folder = strjoin([folder, '/'])
   plotdir = sett.plotpath + 'ansys/' + folder
   check_and_mkdir, plotdir
+
+  outdir = sett.outpath + 'ansys/' + folder
+  check_and_mkdir, outdir
 
   ; Zemax Mapping parameters
   osize = 0.00 ; Fractional Oversize for Sag Grid (1% adds ~ 2.5 radial pxls)
@@ -78,7 +81,25 @@ pro convert_displacements, folder, reread = reread
       endfor
     endfor
 
-    save, m1_struct, m2_struct, opt_struct, filename = data_file
+    ; Fill Wedge Struct
+    ; Loop over windows
+    for j = 0, ntimes - 1 do begin
+      ; Loop over time steps
+      for k = 1, nsteps do begin
+        file = basepath + folder + part_tags[3] + '_' + time_tags[j] + n2s(k) + '.out'
+        if file_test(file) then begin
+          tmp = read_displacements(file, /wedge)
+          ; If Data struct exists, set equal to tmp, else concatenate
+          if not isa(wedge_struct) then $
+            wedge_struct = tmp else $
+            wedge_struct = [wedge_struct, tmp]
+        endif
+      endfor
+    endfor
+
+    if isa(wedge_struct) then $
+      save, m1_struct, m2_struct, opt_struct, wedge_struct, filename = data_file else $
+      save, m1_struct, m2_struct, opt_struct, filename = data_file
   endif else begin
     print, 'Found existing ANSYS data: ' + n2s(data_file)
     restore, data_file
@@ -86,7 +107,7 @@ pro convert_displacements, folder, reread = reread
   ; -------------------------------------------------------------------
   ; Register Local Coordinate Frames to ANSYS Global
   ; -------------------------------------------------------------------
-
+  ; Below are in inches
   m1roc = 120
   m2roc = 20
   m1conic = -1
@@ -173,6 +194,25 @@ pro convert_displacements, folder, reread = reread
     opt_disp[*, *, i] = apply_shift(opt_tmp, opt_shift[0 : 5], /flag)
   endfor
 
+  ; Map wedge onto xy plane
+  if isa(wedge_struct) then begin
+    wedge_test = [wedge_struct[0].x, wedge_struct[0].y, wedge_struct[0].z]
+    wedge_shift = calc_frameshift(wedge_test, wedge_test, /zonly)
+
+    wedge_points = n_elements(wedge_struct[0].x)
+    wedge_init = apply_shift([wedge_struct[0].x, wedge_struct[0].y, $
+      wedge_struct[0].z], wedge_shift[0 : 5], /nomove)
+
+    wedge_trans = rebin(mean(wedge_init, dimension = 2), 3, wedge_points)
+    wedge_init -= wedge_trans
+
+    wedge_tmp = [wedge_struct[0].x + wedge_struct[0].dx, $
+      wedge_struct[0].y + wedge_struct[0].dy, $
+      wedge_struct[0].z + wedge_struct[0].dz]
+    wedge_disp = apply_shift(wedge_tmp, wedge_shift[0 : 5], /nomove)
+    wedge_disp -= wedge_trans
+  endif
+
   ; ----------------------------------------------------------------------
   ; Calculate Displacement data in the local frame
   ; ----------------------------------------------------------------------
@@ -226,6 +266,18 @@ pro convert_displacements, folder, reread = reread
   print, '| Theta |  Phi  |  Psi  |   X   |   Y   |   Z   | RMS ERR(um) |'
   print, mean(opt_err, dimension = 2), format = '(6F8.3, F10.2)'
   print, 'RMS Residual: ', 1e6 * mean(sqrt(total(opt_res ^ 2, 1))), ' um'
+
+  ; Repeat for wedge
+  if isa(wedge_struct) then begin
+    wedge_err = calc_frameshift(wedge_init, wedge_disp)
+    wedge_res = apply_shift(identity(3), wedge_err[0 : 5], /nomove, /rev) # (wedge_disp - apply_shift(wedge_init, wedge_err[0 : 5]))
+
+    print, 'Wedge Displacement'
+    print, '| Theta |  Phi  |  Psi  |   X   |   Y   |   Z   | RMS ERR(um) |'
+    print, wedge_err, format = '(6F8.3, F10.2)'
+    print, 'RMS Residual: ', 1e6 * mean(sqrt(total(wedge_res ^ 2, 1))), ' um'
+  endif
+
   print, ''
 
   ; --------------------------------------------------------------------
@@ -264,6 +316,19 @@ pro convert_displacements, folder, reread = reread
   ; Output: Regularly gridded map of z errors over the aperture
   m1_sag = dblarr(npoints, npoints, tsteps)
   m2_sag = dblarr(npoints, npoints, tsteps)
+
+  if isa(wedge_struct) then begin
+    wedge_c = [mean(wedge_init[0, *]), mean(wedge_init[1, *])]
+
+    wedge_xlim = wedge_c[0] + (1 + osize) * [min(wedge_init[0, *] - wedge_c[0]), max(wedge_init[0, *]) - wedge_c[0]]
+    wedge_ylim = wedge_c[1] + (1 + osize) * [min(wedge_init[1, *] - wedge_c[1]), max(wedge_init[1, *]) - wedge_c[1]]
+
+    wedge_xstep = (wedge_xlim[1] - wedge_xlim[0]) / (npoints - 1)
+    wedge_ystep = (wedge_ylim[1] - wedge_ylim[0]) / (npoints - 1)
+
+    wedge_x = dindgen(npoints, start = wedge_xlim[0], increment = wedge_xstep)
+    wedge_y = dindgen(npoints, start = wedge_ylim[0], increment = wedge_ystep)
+  endif
 
   ; Make aperture mask for saggrid
   xyimage, npoints, npoints, xim, yim, rim, /quadrant
@@ -306,20 +371,47 @@ pro convert_displacements, folder, reread = reread
   m2_yout = trigrid(m2_init[0, *], m2_init[1, *], $
     1e6 * (m2_res[1, *]), m2_tr, extra = m2_b, xout = m2_x, yout = m2_y)
 
-  ; What if instead, we subtract all residual TTP?
+  ; What if we subtract all residual TTP?
   nz = 24
   m1_fitmap = zernike_fit_aperture(m1_zout, mask, nz, zernike_cf = mapcf)
   m1_interp = zernike_fit_aperture(m1_sag[*, *, i], mask, nz, zernike_cf = map_int_cf)
 
-  ttpmap = m1_zout
-  ttpmap -= mapcf[0] * ZERNIKE_APERTURE(1, mask)
-  ttpmap -= mapcf[1] * ZERNIKE_APERTURE(2, mask)
-  ttpmap -= mapcf[2] * ZERNIKE_APERTURE(3, mask)
+  m1_ttpmap = m1_zout
+  m1_ttpmap -= mapcf[0] * ZERNIKE_APERTURE(1, mask)
+  m1_ttpmap -= mapcf[1] * ZERNIKE_APERTURE(2, mask)
+  m1_ttpmap -= mapcf[2] * ZERNIKE_APERTURE(3, mask)
 
   ttp_interp_map = m1_sag[*, *, i]
   ttp_interp_map -= map_int_cf[0] * ZERNIKE_APERTURE(1, mask)
   ttp_interp_map -= map_int_cf[1] * ZERNIKE_APERTURE(2, mask)
   ttp_interp_map -= map_int_cf[2] * ZERNIKE_APERTURE(3, mask)
+
+  ; Do for m2
+  m2_fitmap = zernike_fit_aperture(m2_zout, mask, nz, zernike_cf = m2_mapcf)
+
+  m2_ttpmap = m2_zout
+  m2_ttpmap -= m2_mapcf[0] * ZERNIKE_APERTURE(1, mask)
+  m2_ttpmap -= m2_mapcf[1] * ZERNIKE_APERTURE(2, mask)
+  m2_ttpmap -= m2_mapcf[2] * ZERNIKE_APERTURE(3, mask)
+
+  ; Do for wedge
+  if isa(wedge_struct) then begin
+    wedge_zprime = ineff_interp(wedge_init + wedge_res, wedge_init)
+    triangulate, wedge_init[0, *], wedge_init[1, *], wedge_tr, wedge_b
+
+    wedge_sag = trigrid(wedge_init[0, *], wedge_init[1, *], $
+      1e6 * (wedge_zprime - wedge_init[2, *]), wedge_tr, extra = wedge_b, $
+      xout = wedge_x, yout = wedge_y)
+    wedge_xout = trigrid(wedge_init[0, *], wedge_init[1, *], $
+      1e6 * (wedge_res[0, *]), wedge_tr, extra = wedge_b, $
+      xout = wedge_x, yout = wedge_y)
+    wedge_yout = trigrid(wedge_init[0, *], wedge_init[1, *], $
+      1e6 * (wedge_res[1, *]), wedge_tr, extra = wedge_b, $
+      xout = wedge_x, yout = wedge_y)
+    wedge_zout = trigrid(wedge_init[0, *], wedge_init[1, *], $
+      1e6 * (wedge_res[2, *]), wedge_tr, extra = wedge_b, $
+      xout = wedge_x, yout = wedge_y)
+  endif
 
   ; --------------------------------------------------------------------
   ; Make plots
@@ -327,11 +419,19 @@ pro convert_displacements, folder, reread = reread
   ;
   ;
 
-  ; lmax = max(sqrt(m1_xout ^ 2 + m1_yout ^ 2))
-  ; scale = (lmax * 1e-6) / 0.6
-  ; m1_xout[nmasksel] = 0
-  ; m1_yout[nmasksel] = 0
-  ; plot_field, m1_xout, m1_yout, length = 30 * scale, title = 'X and Y ;Displacements: 30x Scale'
+  ; Vector plot
+  lmax = max(sqrt(m1_xout ^ 2 + m1_yout ^ 2))
+  scale = (lmax * 1e-6) / 0.6
+  m1_xout[nmasksel] = 0
+  m1_yout[nmasksel] = 0
+
+  v = vector(rebin(m1_xout, 32, 32), rebin(m1_yout, 32, 32), $
+    rebin(m1_x, 32), rebin(m1_y, 32), $
+    auto_color = 1, rgb_table = 10, position = [0.10, 0.22, 0.95, 0.9], aspect_ratio = 1)
+
+  c = colorbar(target = v, $
+    position = [0.10, 0.1, 0.45, 0.15], $
+    title = 'Magnitude')
 
   ; M1
   plotfile = plotdir + 'M1_Rawx_' + n2s(i)
@@ -351,7 +451,7 @@ pro convert_displacements, folder, reread = reread
     blackout = nmasksel, title = 'M1 Interpolated Z error'
 
   plotfile = plotdir + 'M1_TTP_' + n2s(i)
-  implot, 1e3 * ttpmap, plotfile, cbtitle = 'nm', ncolor = 255, $
+  implot, 1e3 * m1_ttpmap, plotfile, cbtitle = 'nm', ncolor = 255, $
     blackout = nmasksel, title = 'M1 Raw Z Residual, TTP Subtracted'
 
   plotfile = plotdir + 'M1_zinterp_TTP_' + n2s(i)
@@ -363,21 +463,55 @@ pro convert_displacements, folder, reread = reread
   implot, 1e3 * m2_xout, plotfile, cbtitle = 'nm', ncolor = 255, $
     blackout = nmasksel, title = 'M2 Raw X error'
 
-  plotfile = plotdir + 'm2_Rawy_' + n2s(i)
+  plotfile = plotdir + 'M2_Rawy_' + n2s(i)
   implot, 1e3 * m2_yout, plotfile, cbtitle = 'nm', ncolor = 255, $
     blackout = nmasksel, title = 'M2 Raw Y error'
 
-  plotfile = plotdir + 'm2_Rawz_' + n2s(i)
+  plotfile = plotdir + 'M2_Rawz_' + n2s(i)
   implot, 1e3 * m2_zout, plotfile, cbtitle = 'nm', ncolor = 255, $
     blackout = nmasksel, title = 'M2 Raw Z error'
 
-  plotfile = plotdir + 'm2_zinterp_' + n2s(i)
+  plotfile = plotdir + 'M2_zinterp_' + n2s(i)
   implot, 1e3 * m2_sag[*, *, i], plotfile, cbtitle = 'nm', ncolor = 255, $
     blackout = nmasksel, title = 'M2 Interpolated Z error'
 
+  plotfile = plotdir + 'M2_TTP_' + n2s(i)
+  implot, 1e3 * m2_ttpmap, plotfile, cbtitle = 'nm', ncolor = 255, $
+    blackout = nmasksel, title = 'M2 Raw Z Residual, TTP Subtracted'
+
+  ; Wedge
+  plotfile = plotdir + 'Wedge_Rawx_' + n2s(i)
+  implot, wedge_xout, plotfile, cbtitle = 'um', ncolor = 255, $
+    blackout = nmasksel, title = 'wedge Raw X error'
+
+  plotfile = plotdir + 'Wedge_Rawy_' + n2s(i)
+  implot, wedge_yout, plotfile, cbtitle = 'um', ncolor = 255, $
+    blackout = nmasksel, title = 'wedge Raw Y error'
+
+  plotfile = plotdir + 'Wedge_Rawz_' + n2s(i)
+  implot, wedge_zout, plotfile, cbtitle = 'um', ncolor = 255, $
+    blackout = nmasksel, title = 'wedge Raw Z error'
+
+  plotfile = plotdir + 'Wedge_zinterp_' + n2s(i)
+  implot, wedge_sag, plotfile, cbtitle = 'um', ncolor = 255, $
+    blackout = nmasksel, title = 'wedge Interpolated Z error'
+
+  ; --------------------------------------------------------------------
+  ; Write output files
+  ; -------------------------------------------------------------------
+  ;
+  ;
+
+  ; Placeholder for writing ZEMAX prescription or other file
+
+  ; Write Sag surfaces
+  filename = outdir + 'm1_sag'
+  write_sag, filename, m1_ttpmap, m1_x, m1_y, mask, unitflag, 'M1', i
+
+  filename = outdir + 'm2_sag'
+  write_sag, filename, m2_zout, m2_x, m2_y, mask, unitflag, 'M2', i
+
   ; endfor
-  print, ''
-  print, 'DONE'
-  print, ''
+
   stop
 end
