@@ -1,9 +1,12 @@
 function frameshift_opt, params
   compile_opt idl2
   ; Optimization function for calculated coordinate fram transformations
-  ; Objective function is the RMS error of all points
+  ; Objective function is the RMS error in ppm
   ; -----------------------------------------------
-  ; Arguments:
+  ; Inputs
+  ; params: vector of angles and displacements [Theta,Phi,Psi, X, Y Z]
+  ; -----------------------------------------------
+  ; Common Block data:
   ; input: matrix of input points
   ; output: matrix of output points
   ; ----------------------------------------------
@@ -41,7 +44,7 @@ function frameshift_opt, params
     Rout = (Rfull # input) + trans else $
     Rout = Rfull # (input + trans)
 
-  return, 1e6 * sqrt(total((Rout - output) ^ 2) / sz[2])
+  return, 1d6 * sqrt(total((Rout - output) ^ 2) / sz[2])
 end
 
 function frameshift_zonly, params
@@ -50,8 +53,12 @@ function frameshift_zonly, params
   ; Zonly - Maps planar set of points onto the xy plane, with the average
   ; position at the origin
   ; -----------------------------------------------
-  ; Arguments:
+  ; Inputs
+  ; params: vector of angles and displacements [Theta,Phi,Psi, X, Y Z]
+  ; -----------------------------------------------
+  ; Common Block data:
   ; input: matrix of input points
+  ; output: matrix of output points
   ; ----------------------------------------------
   ; Since this will also be used for calcuating in the Zemax frame, uses the following order convention:
   ; dx, dy, dz (dz is preceding surface thickness)
@@ -86,16 +93,18 @@ function frameshift_zonly, params
   trans = rebin(mean(Rout, dimension = 2), 3, sz[2])
   Rout -= trans
 
-  return, 1e6 * sqrt(total((Rout[2, *] ^ 2)) / sz[2])
+  return, 1d6 * sqrt(total((Rout[2, *] ^ 2)) / sz[2])
 end
 
 function calc_frameshift, r1, r2, guess = guess, flag = flag, zonly = zonly
   compile_opt idl2
   ; Performs a least squares fit for the rotation and displacement between two sets of points
+  ; Since behaviour is periodic with angles, and powell can leap to other minima, we get close to the desired minimum using constrained_min
+  ; constrained_min uses single precision (as far as I can tell), so I then switch to Powell to get a higher precision answer at the end
 
   ; Return vector
-  ; disp = [x,y,z,theta,phi,psi]
-  ;
+  ; Vector of displacements and RMS ppm error: [x,y,z,theta,phi,psi, err]
+
   common frameshift_opt, input, output, orderflag
 
   input = r1
@@ -111,12 +120,16 @@ function calc_frameshift, r1, r2, guess = guess, flag = flag, zonly = zonly
   ; Bound on function
   gbnd = [[-1], [1e30]]
 
+  ; Settings for Powell
+  ftol = 1e-16
+  xi = identity(6) / 1000d ; Make sure to have smaller initial step size!
+
   if keyword_set(zonly) then begin
     constrained_min, guess, xbnd, gbnd, 0, 'frameshift_zonly', inform, epstop = 1e-18, limser = 100000, nstop = 100
-    fmin = frameshift_zonly(guess)
+    powell, guess, xi, ftol, fmin, 'frameshift_zonly', /double, itmax = 10000
   endif else begin
     constrained_min, guess, xbnd, gbnd, 0, 'frameshift_opt', inform, epstop = 1e-18, limser = 100000, nstop = 100
-    fmin = frameshift_opt(guess)
+    powell, guess, xi, ftol, fmin, 'frameshift_opt', /double, itmax = 10000
   endelse
 
   ; Return error in RMS ppm

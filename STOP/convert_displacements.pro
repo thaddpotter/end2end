@@ -10,7 +10,7 @@ pro convert_displacements, folder, reread = reread
   nsteps = 8
 
   check_and_mkdir, sett.datapath + 'stop/'
-  data_file = sett.datapath + 'stop/' + folder + 'ANSYS_disp.idl'
+  data_file = sett.datapath + 'stop/' + folder + '_disp.idl'
 
   folder = strjoin([folder, '/'])
   plotdir = sett.plotpath + 'ansys/' + folder
@@ -480,21 +480,23 @@ pro convert_displacements, folder, reread = reread
     blackout = nmasksel, title = 'M2 Raw Z Residual, TTP Subtracted'
 
   ; Wedge
-  plotfile = plotdir + 'Wedge_Rawx_' + n2s(i)
-  implot, wedge_xout, plotfile, cbtitle = 'um', ncolor = 255, $
-    blackout = nmasksel, title = 'wedge Raw X error'
+  if isa(wedge_struct) then begin
+    plotfile = plotdir + 'Wedge_Rawx_' + n2s(i)
+    implot, wedge_xout, plotfile, cbtitle = 'um', ncolor = 255, $
+      blackout = nmasksel, title = 'wedge Raw X error'
 
-  plotfile = plotdir + 'Wedge_Rawy_' + n2s(i)
-  implot, wedge_yout, plotfile, cbtitle = 'um', ncolor = 255, $
-    blackout = nmasksel, title = 'wedge Raw Y error'
+    plotfile = plotdir + 'Wedge_Rawy_' + n2s(i)
+    implot, wedge_yout, plotfile, cbtitle = 'um', ncolor = 255, $
+      blackout = nmasksel, title = 'wedge Raw Y error'
 
-  plotfile = plotdir + 'Wedge_Rawz_' + n2s(i)
-  implot, wedge_zout, plotfile, cbtitle = 'um', ncolor = 255, $
-    blackout = nmasksel, title = 'wedge Raw Z error'
+    plotfile = plotdir + 'Wedge_Rawz_' + n2s(i)
+    implot, wedge_zout, plotfile, cbtitle = 'um', ncolor = 255, $
+      blackout = nmasksel, title = 'wedge Raw Z error'
 
-  plotfile = plotdir + 'Wedge_zinterp_' + n2s(i)
-  implot, wedge_sag, plotfile, cbtitle = 'um', ncolor = 255, $
-    blackout = nmasksel, title = 'wedge Interpolated Z error'
+    plotfile = plotdir + 'Wedge_zinterp_' + n2s(i)
+    implot, wedge_sag, plotfile, cbtitle = 'um', ncolor = 255, $
+      blackout = nmasksel, title = 'wedge Interpolated Z error'
+  endif
 
   ; --------------------------------------------------------------------
   ; Write output files
@@ -512,6 +514,5 @@ pro convert_displacements, folder, reread = reread
   write_sag, filename, m2_zout, m2_x, m2_y, mask, unitflag, 'M2', i
 
   ; endfor
-
-  stop
+  print, ''
 end
