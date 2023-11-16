@@ -1,4 +1,4 @@
-pro convert_displacements, folder, reread = reread, vector = vector
+pro convert_displacements, folder, reread = reread, vector = vector, global = global
   compile_opt idl2
   sett = e2e_load_settings()
 
@@ -104,6 +104,22 @@ pro convert_displacements, folder, reread = reread, vector = vector
     print, 'Found existing ANSYS data: ' + n2s(data_file)
     restore, data_file
   endelse
+
+  ; -------------------------------------------------------------------
+  ; Remove Bulk motion of the payload as a result of boundary conditions
+  ; -------------------------------------------------------------------
+  ; Key to wedge? This will remove most of the motion of the primary...
+  ;
+  ;
+
+  if keyword_set(global) then begin
+
+    
+
+
+
+  endif
+
   ; -------------------------------------------------------------------
   ; Register Local Coordinate Frames to ANSYS Global
   ; -------------------------------------------------------------------

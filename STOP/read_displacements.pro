@@ -1,4 +1,4 @@
-function read_displacements, file, wedge = wedge
+function read_displacements, file, wedge = wedge, global = global
   ; Returns structure!
   compile_opt idl2
 
