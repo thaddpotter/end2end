@@ -4,5 +4,5 @@ pro loop_disp
   folders = ['fullmodel_newbounds']
   n = n_elements(folders)
 
-  for i = 0, n - 1 do convert_displacements, folders[i], /reread, /vector
+  for i = 0, n - 1 do convert_displacements, folders[i], /reread
 end
