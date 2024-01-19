@@ -485,5 +485,9 @@ pro convert_displacements, folder, reread = reread, vector = vector
     ; if i eq 2 then stop
   endfor
   print, ''
+
+  ; Save displacement datacube for josh
+  save, m1_err, m2_err, opt_err, filename = sett.datapath + 'zmx_init.sav'
+
   stop
 end
