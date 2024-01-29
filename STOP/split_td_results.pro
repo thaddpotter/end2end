@@ -8,8 +8,8 @@ pro split_td_results, file, split = split, celsius = celsius
   openr, 1, sett.tdpath + 'ansys/thermal_desktop_export/' + file + '.dat'
 
   if keyword_set(split) then $
-    openw, 2, sett.tdpath + 'ansys/thermal_desktop_export/' + file + '_split' + n2s(counter) + '.dat' else $
-    openw, 2, sett.tdpath + 'ansys/thermal_desktop_export/' + file + '_split.dat'
+    openw, 2, sett.tdpath + 'ansys/thermal_desktop_export/' + file + '_' + n2s(counter) + '.dat' else $
+    openw, 2, sett.tdpath + 'ansys/thermal_desktop_export/' + file + '_single.dat'
 
   line = ''
 
@@ -28,10 +28,10 @@ pro split_td_results, file, split = split, celsius = celsius
     if (strmatch(line, '*TIME*')) then begin
       if keyword_set(split) then begin
         close, 2
-        print, 'Wrote: ' + file + '_split' + n2s(counter) + '.dat'
+        print, 'Wrote: ' + file + '_' + n2s(counter) + '.dat'
 
         counter++
-        openw, 2, sett.tdpath + 'ansys/thermal_desktop_export/' + file + '_split' + n2s(counter) + '.dat'
+        openw, 2, sett.tdpath + 'ansys/thermal_desktop_export/' + file + '_' + n2s(counter) + '.dat'
       endif else printf, 2, 'solve'
       ; If this line contains data, check units for output
     endif else begin
@@ -47,6 +47,6 @@ pro split_td_results, file, split = split, celsius = celsius
 
   close, 1, 2
   if keyword_set(split) then $
-    print, 'Wrote: ' + file + '_split' + n2s(counter) + '.dat' else $
-    print, 'Wrote: ' + file + '_split.dat'
+    print, 'Wrote: ' + file + '_' + n2s(counter) + '.dat' else $
+    print, 'Wrote: ' + file + '_single.dat'
 end
