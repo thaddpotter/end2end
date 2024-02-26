@@ -33,10 +33,11 @@ pro convert_STAR
   basepath = sett.tdpath + 'ansys/STAR/Flight1_'
   time = ['AM', 'PM']
   optic = ['M1', 'M2', 'M3', 'LODM', 'Dicro', 'OAP1', 'OAP2', 'BMC', 'OAP3', 'OAP4']
+  nsteps = 8
 
-  for k = 0, 1 do begin
+  for k = 0, n_elements(time) - 1 do begin
     for j = 0, n_elements(optic) - 1 do begin
-      for i = 1, 4 do begin
+      for i = 5, nsteps do begin
         rr_STAR, basepath + time[k] + n2s(i) + '_' + optic[j] + '.txt', 1
       endfor
     endfor
