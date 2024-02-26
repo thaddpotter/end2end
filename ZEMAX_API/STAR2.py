@@ -54,41 +54,74 @@ if TheSystem is None:
 print('Connected to OpticStudio')
 ####################################################################################################
 
-
 #Program Setup
 import numpy as np
 import scipy
 import scipy.io as scipyio
 import sys
+import matplotlib.pyplot as plt
+
+def transpose(data):
+    """Transposes a 2D list (Python3.x or greater).  
+    
+    Useful for converting mutli-dimensional line series (i.e. FFT PSF)
+    
+    Parameters
+    ----------
+    data      : Python native list (if using System.Data[,] object reshape first)    
+    
+    Returns
+    -------
+    res       : transposed 2D list
+    """
+    if type(data) is not list:
+        data = list(data)
+    return list(map(list, zip(*data)))
+    
+def reshape(data, x, y, transpose = False):
+    """Converts a System.Double[,] to a 2D list for plotting or post processing
+    
+    Parameters
+    ----------
+    data      : System.Double[,] data directly from ZOS-API 
+    x         : x width of new 2D list [use var.GetLength(0) for dimension]
+    y         : y width of new 2D list [use var.GetLength(1) for dimension]
+    transpose : transposes data; needed for some multi-dimensional line series data
+    
+    Returns
+    -------
+    res       : 2D list; can be directly used with Matplotlib or converted to
+                a numpy array using numpy.asarray(res)
+    """
+    if type(data) is not list:
+        data = list(data)
+    var_lst = [y] * x;
+    it = iter(data)
+    res = [list(islice(it, i)) for i in var_lst]
+    if transpose:
+        return self.transpose(res);
+    return res
 
 ##STAR Setup
 analysis = TheSystem.Analyses
 tools = TheSystem.Tools
-surf_inds = [3,8,13,18,23,27,31,36,40,43,44,46]
+surf_inds = [3,8,13,18,23,27,31,36,40]
+surf_names = ['M1','M2','M3','LODM','Dicro','OAP1','OAP2','BMC','OAP3']
+n_surf = len(surf_inds)
 
-#Field heights (1 is Default for on-axis)
-hx = 1
-hy = 1
-
+#
+nsteps = 72
 
 # Get Surfaces
 TheLDE = TheSystem.LDE
 move_m2 = TheLDE.GetSurfaceAt(7)
 
 #File IO setup
-data_dir = 'c:\\Users\locsst\Desktop\TD_picture_working\\ansys\\STAR\\'
-
-#Functions
-
-
-
-####################################################################################################
-
+data_dir = 'c:\\Users\\locsst\\Desktop\\TD_picture_working\\ansys\\STAR\\pm\\' 
 
 #Clear Any Leftover STAR Data from previous runs
-surf_m1.STARData.Deformations.FEAData.UnloadData()
-surf_m2.STARData.Deformations.FEAData.UnloadData()
-surf_m3.STARData.Deformations.FEAData.UnloadData()
+for i in range(n_surf):
+    TheLDE.GetSurfaceAt(surf_inds[i]).STARData.Deformations.FEAData.UnloadData()
 
 #Clear and set Variables for optimization, reset M2 Correction
 tools.RemoveAllVariables()
@@ -104,37 +137,29 @@ move_m2.GetCellAt(13).MakeSolveVariable()
 move_m2.GetCellAt(14).MakeSolveVariable()
 move_m2.GetCellAt(15).MakeSolveVariable()
 
+#Set up arrays
+chief_arr = np.zeros((n_surf,2,nsteps))
+nominal_chief_arr = np.zeros((n_surf,2))
+
+wf = TheSystem.Analyses.New_Analysis(ZOSAPI.Analysis.AnalysisIDM.WavefrontMap)
+wf.ApplyAndWaitForCompletion()
+wfresults = wf.GetResults()
+wfgrid = wfresults.GetDataGrid(0).Values
+wfsize = [wfgrid.GetLength(0),wfgrid.GetLength(1)]
+
+wfcube = np.zeros((wfsize[0],wfsize[1],nsteps))
+
 #Get data from nominal system
-nominal_chief_arr = np.zeros((10,2))
+for i in range(n_surf):
+    nominal_chief_arr[i,0] = TheSystem.MFE.GetOperandValue(ZOSAPI.Editors.MFE.MeritOperandType.REAX, surf_inds[i],0,0,0,0,0,0,0)
+    nominal_chief_arr[i,1] = TheSystem.MFE.GetOperandValue(ZOSAPI.Editors.MFE.MeritOperandType.REAY, surf_inds[i],0,0,0,0,0,0,0)
 
-for i in range(10):
-    nominal_chief_arr[i-1,0] = TheSystem.MFE.GetOperandValue(ZOSAPI.Editors.MFE.MeritOperandType.REAX, surf_inds[i-1],0,0,0,0,0,0,0)
-    nominal_chief_arr[i-1,1] = TheSystem.MFE.GetOperandValue(ZOSAPI.Editors.MFE.MeritOperandType.REAY, surf_inds[i-1],0,0,0,0,0,0,0)
-
-#FEA
-surf_m1.STARData.Deformations.FEAData.ImportDeformations(file_m1)
-surf_m2.STARData.Deformations.FEAData.ImportDeformations(file_m2)
-surf_m3.STARData.Deformations.FEAData.ImportDeformations(file_m3)
-
+##Run initial timestep
 #Open displacement data
-file_m1 = data_dir + 'pm1_Surface_03_Deformation.txt'
-file_m2 = data_dir + 'pm1_Surface_08_Deformation.txt'
-file_m3 = data_dir + 'pm1_Surface_13_Deformation.txt'
-
-surf_m1.STARData.Deformations.FEAData.ImportDeformations(file_m1)
-surf_m2.STARData.Deformations.FEAData.ImportDeformations(file_m2)
-surf_m3.STARData.Deformations.FEAData.ImportDeformations(file_m3)
-
-#Set dz = 180 deg for nominal system alignment
-surf_m1.STARData.Deformations.CoordinateTransform.SetTransformValuesWithAngles(0,0,180,0,0,0)
-surf_m2.STARData.Deformations.CoordinateTransform.SetTransformValuesWithAngles(0,0,180,0,0,0)
-surf_m3.STARData.Deformations.CoordinateTransform.SetTransformValuesWithAngles(0,0,180,0,0,0)
-
-if not surf_m1.STARData.Deformations.FEAData.AreDeformationsApplied():
-    sys.exit('Deformations not applied for timestep: X')
-
-#Plot initial system error?
-
+for i in range(n_surf):
+    disp_file = data_dir + '00_Timestep_00001_20240206' + '\\Surface_' + str(surf_inds[i]).zfill(2) + '_Deformation.txt'
+    TheLDE.GetSurfaceAt(surf_inds[i]).STARData.Deformations.SetDataIsGlobal()
+    TheLDE.GetSurfaceAt(surf_inds[i]).STARData.Deformations.FEAData.ImportDeformations(disp_file)
 
 #Run optimizer (some set of change weights and running with various algorithms to get to a minimum?)
 LocalOpt = TheSystem.Tools.OpenLocalOptimization()
@@ -147,7 +172,7 @@ if (LocalOpt != None):
     print('Initial Merit Function ', LocalOpt.InitialMeritFunction)
     
     LocalOpt.RunAndWaitForCompletion()
-    print('Intermediate Merit Function   ', LocalOpt.CurrentMeritFunction)
+    print('Intermediate Merit Function: ', LocalOpt.CurrentMeritFunction)
     LocalOpt.Close()
 
 HammerOpt = tools.OpenHammerOptimization()
@@ -157,43 +182,89 @@ if (HammerOpt != None):
     HammerOpt.NumberOfCores = 32
     print('Hammering...')
 
-    HammerOpt.RunAndWaitWithTimeout(90)
-    print('Final Merit Function ', HammerOpt.CurrentMeritFunction)
-    HammerOpt.Close
+    HammerOpt.RunAndWaitWithTimeout(60)
+    HammerOpt.Cancel()
+    HammerOpt.WaitForCompletion()
+    print('Final Merit Function: ', HammerOpt.CurrentMeritFunction)
+    
+    HammerOpt.Close()
 
+    #Clear variables just in case
+tools.RemoveAllVariables()
 
-#loop over timesteps (2-N)
-
-chief_arr = np.zeros(10,2)
 #Get chief ray location at each optic (in lens coords)
 #Note, may need to set hx,hy (field 4) to 1!
-for i in range(10):
-    chief_arr[i-1,0] = TheSystem.MFE.GetOperandValue(ZOSAPI.Editors.MFE.MeritOperandType.REAX, surf_inds[i-1],0,0,0,0,0,0,0)
-    chief_arr[i-1,1] = TheSystem.MFE.GetOperandValue(ZOSAPI.Editors.MFE.MeritOperandType.REAY, surf_inds[i-1],0,0,0,0,0,0,0)
+for i in range(n_surf):
+    chief_arr[i,0,0] = TheSystem.MFE.GetOperandValue(ZOSAPI.Editors.MFE.MeritOperandType.REAX, surf_inds[i],0,0,0,0,0,0,0)
+    chief_arr[i,1,0] = TheSystem.MFE.GetOperandValue(ZOSAPI.Editors.MFE.MeritOperandType.REAY, surf_inds[i],0,0,0,0,0,0,0)
+
+wf.ApplyAndWaitForCompletion()
+wfresults = wf.GetResults()
+wfgrid = wfresults.GetDataGrid(0).Values
+wfarr = reshape(wfgrid,wfgrid.GetLength(0),wfgrid.GetLength(1))
+
+wfcube[:,:,0] = wfarr
+
+#Clear STAR Data for start of looping
+for i in range(n_surf):
+    TheLDE.GetSurfaceAt(surf_inds[i]).STARData.Deformations.FEAData.UnloadData()
+
+for j in range(1,nsteps):
+    print(f'Timestep: {str(j+1)} of {str(nsteps)}' ,end='\r')
+    
+    #Open displacement data
+    for i in range(n_surf):
+        disp_file = data_dir + str(j).zfill(2) + '_Timestep_0'+str(j).zfill(2)+'00_20240206' + '\\Surface_' + str(surf_inds[i]).zfill(2) + '_Deformation.txt'
+        TheLDE.GetSurfaceAt(surf_inds[i]).STARData.Deformations.FEAData.ImportDeformations(disp_file)
+        #Set dz = 180 deg for nominal system alignment
+        #TheLDE.GetSurfaceAt(surf_inds[i]).STARData.Deformations.CoordinateTransform.SetTransformValuesWithAngles(0,0,180,0,0,0)
+
+    #Plot initial system error?
+
+    #Get chief ray location at each optic (in lens coords)
+    #Note, may need to set hx,hy (field 4) to 1!
+    for i in range(n_surf):
+        chief_arr[i,0,j] = TheSystem.MFE.GetOperandValue(ZOSAPI.Editors.MFE.MeritOperandType.REAX, surf_inds[i],0,0,0,0,0,0,0)
+        chief_arr[i,1,j] = TheSystem.MFE.GetOperandValue(ZOSAPI.Editors.MFE.MeritOperandType.REAY, surf_inds[i],0,0,0,0,0,0,0)
+
+    wf.ApplyAndWaitForCompletion()
+    wfresults = wf.GetResults()
+    wfgrid = wfresults.GetDataGrid(0).Values
+    wfarr = reshape(wfgrid,wfgrid.GetLength(0),wfgrid.GetLength(1))
+
+    wfcube[:,:,j] = wfarr
+
+    #Clear STAR Data for next timestep
+    for i in range(n_surf):
+        TheLDE.GetSurfaceAt(surf_inds[i]).STARData.Deformations.FEAData.UnloadData()
 
 
+##Plot Outputs
+bwalk = np.zeros((n_surf,2,nsteps))
 
-#Wavefront map @ surf ???
-ZOSAPI.Analysis.I_Analyses.New_WavefrontMap()
+for k in range(nsteps):
+    bwalk[:,:,k] = chief_arr[:,:,k] - nominal_chief_arr
 
+axis = ['X','Y']
 
-# Beamwalk parameters at optics (this seems to be factored into wavefront calcs...?)
+tarr = np.zeros(nsteps)
+for i in range(nsteps):
+    tarr[i] = 5./3 * i
 
+for j in range(2):
+    minv = np.min(bwalk[:,j,:])
+    maxv = np.max(bwalk[:,j,:])
 
+    minv -= 0.1*(maxv-minv)
+    maxv += 0.1*(maxv-minv)
 
+    plt.figure()
+    plt.ylim(minv,maxv)
+    plt.title(f'AM Beamwalk over time : {axis[j]} Direction')
+    plt.xlabel('Time (Mins)')
+    plt.ylabel('Beamwalk (in)')
 
+    for i in range(n_surf):
+        plt.plot(tarr,bwalk[i,j,:])
 
-
-
-#Open new displacement data
-
-#If flag, optimize again
-
-#endloop
-
-
-#Final timestep
-
-# export data
-
-
+    plt.legend(surf_names,bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0)
