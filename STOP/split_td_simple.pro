@@ -1,15 +1,15 @@
-pro split_td_results, file, split = split, celsius = celsius
+pro split_td_simple, split = split, celsius = celsius
   compile_opt idl2
 
-  sett = e2e_load_settings()
+  basepath = '/mnt/c/Users/locsst/Desktop/ansys_smallscale/thermal'
 
   ; Open file
   counter = 1
-  openr, 1, sett.tdpath + 'ansys/thermal_desktop_export/' + file + '.dat'
+  openr, 1, basepath + '.dat'
 
   if keyword_set(split) then $
-    openw, 2, sett.tdpath + 'ansys/thermal_desktop_export/' + file + '_' + n2s(counter) + '.dat' else $
-    openw, 2, sett.tdpath + 'ansys/thermal_desktop_export/' + file + '_single.dat'
+    openw, 2, basepath + '_' + n2s(counter) + '.dat' else $
+    openw, 2, basepath + '_single.dat'
 
   line = ''
 
@@ -26,13 +26,14 @@ pro split_td_results, file, split = split, celsius = celsius
     readf, 1, line
     ; if this line starts a loop: start a new file for output
     if (strmatch(line, '*TIME*')) then begin
+      printf, 2, 'solve'
       if keyword_set(split) then begin
         close, 2
-        print, 'Wrote: ' + file + '_' + n2s(counter) + '.dat'
+        print, 'Wrote: ' + basepath + '_' + n2s(counter) + '.dat'
 
         counter++
-        openw, 2, sett.tdpath + 'ansys/thermal_desktop_export/' + file + '_' + n2s(counter) + '.dat'
-      endif else printf, 2, 'solve'
+        openw, 2, basepath + '_' + n2s(counter) + '.dat'
+      endif
       ; If this line contains data, check units for output
     endif else begin
       if keyword_set(celsius) then begin
@@ -44,11 +45,10 @@ pro split_td_results, file, split = split, celsius = celsius
     ; Print line out to file
     printf, 2, line
   end
-  ; Add EOF line for looped commands
   if not keyword_set(split) then printf, 2, 'EOF'
 
   close, 1, 2
   if keyword_set(split) then $
-    print, 'Wrote: ' + file + '_' + n2s(counter) + '.dat' else $
-    print, 'Wrote: ' + file + '_single.dat'
+    print, 'Wrote: ' + basepath + '_' + n2s(counter) + '.dat' else $
+    print, 'Wrote: ' + basepath + '_single.dat'
 end

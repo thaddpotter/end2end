@@ -19,7 +19,7 @@ pro plot_steady, data_struct, abbr, ftemp, element
   cbmlegend, ['Flight', 'TD'], intarr(2), color, [0.845, 0.94], linsize = 0.5
 end
 
-pro plot_indiv, data_struct, abbr, tt, ftemp, tmin, newinds, element
+pro plot_indiv, data_struct, abbr, tt, ftemp, tmin, newinds, element, flight_only = flight_only
   compile_opt idl2
   ; -------------------------------------------------------------------------
   ; Plots individual sensors for transient optimization runs in thermal desktop
@@ -61,14 +61,16 @@ pro plot_indiv, data_struct, abbr, tt, ftemp, tmin, newinds, element
     tmp = data_struct.(j)[where(data_struct.loopct eq i)]
 
     ; Plot TD Data
-    if ntd eq 1 then $
-      oplot, tdt, tmp - 273.15, color = color[ind2 + 1]
+    if ntd eq 1 then begin
+      if not keyword_set(flight_only) then $
+        oplot, tdt, tmp - 273.15, color = color[ind2 + 1]
+    endif
   endforeach
 
   cbmlegend, leg, intarr(nel), color, [0.815, 0.92], linsize = 0.5
 end
 
-pro plot_groups, t, adc_temp, ftemp, tmin, tmax, data_struct, time, basedir
+pro plot_groups, t, adc_temp, ftemp, tmin, tmax, data_struct, time, basedir, flight_only = flight_only
   compile_opt idl2
   ; -------------------------------------------------------------------------
   ; Plots groups of sensors for transient optimization runs in thermal desktop
@@ -150,7 +152,7 @@ pro plot_groups, t, adc_temp, ftemp, tmin, tmax, data_struct, time, basedir
     tdt = data_struct.time[sel3] / 3600d + tmin
     tmp = data_struct.(j)[sel3]
 
-    oplot, tdt, tmp - 273.15, color = color[0], psym = 8
+    if not keyword_set(flight_only) then oplot, tdt, tmp - 273.15, color = color[0], psym = 8
 
     ; Loop over sensors
     for i = 1, ntemp - 1 do begin
@@ -158,11 +160,13 @@ pro plot_groups, t, adc_temp, ftemp, tmin, tmax, data_struct, time, basedir
       oplot, tt, ftemp[i, *], color = color[i]
 
       ; Get and plot matching model data
-      j = where(tag_names(data_struct) eq strupcase(strtrim(strjoin(strsplit(abbr[i], '-', /extract)), 2)), ntd)
-      tdt = data_struct.time[sel3] / 3600d + tmin
-      tmp = data_struct.(j)[sel3]
+      if not keyword_set(flight_only) then begin
+        j = where(tag_names(data_struct) eq strupcase(strtrim(strjoin(strsplit(abbr[i], '-', /extract)), 2)), ntd)
+        tdt = data_struct.time[sel3] / 3600d + tmin
+        tmp = data_struct.(j)[sel3]
 
-      oplot, tdt, tmp - 273.15, color = color[i], psym = 8
+        oplot, tdt, tmp - 273.15, color = color[i], psym = 8
+      endif
     endfor
 
     cbmlegend, abbr, intarr(ntemp), color, [0.815, 0.92], linsize = 0.5
@@ -172,7 +176,7 @@ pro plot_groups, t, adc_temp, ftemp, tmin, tmax, data_struct, time, basedir
   endforeach
 end
 
-pro plot_td_err, day = day, night = night, steady = steady, plotdir = plotdir
+pro plot_td_err, day = day, night = night, steady = steady, plotdir = plotdir, flight_only = flight_only
   compile_opt idl2
   ; -----------------------------------------------------------------------------
   ; Plots comparisons of thermal desktop data
@@ -298,7 +302,7 @@ pro plot_td_err, day = day, night = night, steady = steady, plotdir = plotdir
 
       ; Plot Transient
     endif else begin
-      plot_indiv, data_struct, abbr, tt, ftemp, tmin, newinds, element
+      plot_indiv, data_struct, abbr, tt, ftemp, tmin, newinds, element, flight_only = flight_only
     endelse
 
     mkeps, /close
@@ -307,7 +311,7 @@ pro plot_td_err, day = day, night = night, steady = steady, plotdir = plotdir
 
   ; Make group plots
   if not keyword_set(steady) then $
-    plot_groups, t, adc_temp, ftemp, tmin, tmax, data_struct, time, basedir
+    plot_groups, t, adc_temp, ftemp, tmin, tmax, data_struct, time, basedir, flight_only = flight_only
 
   ; Overall error plot for steady state
   if keyword_set(steady) then begin
