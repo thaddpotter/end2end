@@ -197,11 +197,11 @@ pro plot_td_err, day = day, night = night, steady = steady, plotdir = plotdir, f
     keyword_set(steady) and keyword_set(day): $
       file = sett.tdpath + 'init_am/correlation_data_am.dlo'
     keyword_set(steady) and keyword_set(night): $
-      file = sett.tdpath + 'init_pm2/bootstrap_test2.dlo'
+      file = sett.tdpath + 'init_pm/correlation_data_pm.dlo'
     (not keyword_set(steady)) and keyword_set(day): $
-      file = sett.tdpath + 'td_am/correlation_data_am2.dlo'
+      file = sett.tdpath + 'td_am/correlation_data_am.dlo'
     (not keyword_set(steady)) and keyword_set(night): $
-      file = sett.tdpath + 'td_pm/bootstrap_test.dlo'
+      file = sett.tdpath + 'td_pm/correlation_data_pm.dlo'
     else: begin
       print, 'Wrong keyword selection'
     end
@@ -319,7 +319,7 @@ pro plot_td_err, day = day, night = night, steady = steady, plotdir = plotdir, f
     mkeps, basedir + plotfile
     n = n_elements(data_struct.time)
 
-    plot, indgen(n), data_struct.err, position = [0.12, 0.12, 0.84, 0.94], /xs, /ys, xtitle = 'Iteration', ytitle = 'RMS Error', title = 'RMS Error on Initial Conditions'
+    plot, indgen(n), data_struct.err, position = [0.12, 0.12, 0.84, 0.94], /xs, /ys, xtitle = 'Iteration', ytitle = 'RMS Error (K)', title = 'Average Error on Initial Temperature Values'
 
     mkeps, /close
     print, 'Wrote: ' + basedir + plotfile

@@ -34,14 +34,14 @@ pro gen_flight_temp, start_time, stop_time, interval, label = label
 
   ; make output struct (TODO: Make dynamic from measure file?)
   tmp = {time: 0d, $
-    m2gl: 0d, $
+    m2Gl: 0d, $
     obm1: 0d, $
     obm2: 0d, $
     hex: 0d, $
     obm3: 0d, $
-    m1b: 0d, $
-    m1g: 0d, $
-    m1p2: 0d, $
+    m1B: 0d, $
+    m1G: 0d, $
+    m1P2: 0d, $
     t45: 0d, $
     t44: 0d, $
     t43: 0d, $
@@ -52,8 +52,8 @@ pro gen_flight_temp, start_time, stop_time, interval, label = label
     t33: 0d, $
     t32: 0d, $
     t31: 0d, $
-    m1p3: 0d, $
-    m1p1: 0d, $
+    m1P3: 0d, $
+    m1P1: 0d, $
     t25: 0d, $
     t24: 0d, $
     t23: 0d, $

@@ -5,11 +5,11 @@ pro split_td_results, file, split = split, celsius = celsius
 
   ; Open file
   counter = 1
-  openr, 1, sett.tdpath + 'ansys/thermal_desktop_export/' + file + '.dat'
+  openr, 1, sett.tdpath + 'td/export/' + file + '.dat'
 
   if keyword_set(split) then $
-    openw, 2, sett.tdpath + 'ansys/thermal_desktop_export/' + file + '_' + n2s(counter) + '.dat' else $
-    openw, 2, sett.tdpath + 'ansys/thermal_desktop_export/' + file + '_single.dat'
+    openw, 2, sett.tdpath + 'td/export/' + file + '_' + n2s(counter) + '.dat' else $
+    openw, 2, sett.tdpath + 'td/export/' + file + '_single.dat'
 
   line = ''
 
@@ -31,7 +31,7 @@ pro split_td_results, file, split = split, celsius = celsius
         print, 'Wrote: ' + file + '_' + n2s(counter) + '.dat'
 
         counter++
-        openw, 2, sett.tdpath + 'ansys/thermal_desktop_export/' + file + '_' + n2s(counter) + '.dat'
+        openw, 2, sett.tdpath + 'td/export/' + file + '_' + n2s(counter) + '.dat'
       endif else printf, 2, 'solve'
       ; If this line contains data, check units for output
     endif else begin
