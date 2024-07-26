@@ -13,7 +13,7 @@ pro run_disturbed
   rx = piccsim_readrx(piccsett.rx_path + 'rx_picture_c2_ch6.csv')
 
   ; Read Beamwalk data
-  csv_file = sett.datapath + 'STAR_res/pm_beamwalk.csv'
+  csv_file = sett.datapath + 'STAR_res/am_beamwalk.csv'
   bwalk_struct = read_csv(csv_file, count = nsteps)
   ncols = n_tags(bwalk_struct)
   nrows = n_elements((bwalk_struct.(0)))
@@ -30,10 +30,11 @@ pro run_disturbed
   bwalk[2, *] -= bwalk_struct.(2)
 
   ; Read Fits Data
-  fits_file = sett.datapath + 'STAR_res/pm3'
+  fits_file = sett.datapath + 'STAR_res/am1'
   readmap, fits_file, fits_data, mapsamp, mapunits
   ; Calculate magnification
-  mag = double(mapsamp) * 1.04d * (piccsett.gridsize * piccsett.beamratio) / (2 * rx[0].radius)
+  ;Correct error where map sampling was increased without changing the key value
+  mag = double(mapsamp)*2 * 1.04d * (piccsett.gridsize * piccsett.beamratio) / (2 * rx[0].radius)
 
   ; Make aperture mask
   xyimage, piccsett.gridsize, piccsett.gridsize, xim, yim, rim, /quadrant, /index
@@ -74,32 +75,31 @@ pro run_disturbed
   endfor
 
   nsteps = 20
-  for i = 2, nsteps - 1 do begin
+  for i = 0, nsteps - 1 do begin
     ; ;Read wavefront
-    fits_file = sett.datapath + 'STAR_res/pm' + n2s(i + 2)
+    fits_file = sett.datapath + 'STAR_res/am' + n2s(i + 2)
     readmap, fits_file, fits_data, mapsamp, mapunits
 
     ; Subtract at native resolution, magnify to piccsim sampling
     err_map = magnify(fits_data - initmap, mag, piccsett.gridsize, cubic = -0.5)
     err_map[where(finite(err_map, /nan))] = 0 ; Mask nans
-
-    ; Fit zernikes and subtract
-    fitmap = zernike_fit_aperture(err_map, mask, 15, zernike_cf = zcoeff)
-    print, zcoeff
-    ; err_map -= fitmap
-    err_map[nmasksel] = 0
+    err_map[nmasksel] = 0 ;Mask aperture before filtering
 
     fmap = filter_map(err_map, high = 2, /period)
     fmap[nmasksel] = 0
 
-    ; ;Run simulation
-    run_piccsim, sim_name, rx_name, dm_cmd = dm_cmd, continue_sim = (i gt 2), $
-      sim_tag = 'stop_sequence', live_contrast = 'sci', phase_error_map = err_map, $
-      optic_displacement = [bwalk[0, 0 : 2], bwalk[2 * i + 1 : 2 * i + 2, 0 : 2]]
-  endfor
+    disp_mat = [bwalk[0, *], bwalk[2 * i + 1 : 2 * i + 2, *]]
 
-  ; run_piccsim, 'sim_system', 'rx_picture_c2_ch6', broadband = [0, 1, 2, 3, 4], $
-  ; optic_displacement = bwalk[0 : 2, *], zernike_input_phase =
+    check_and_mkdir, sett.plotpath + 'wferr/'
+    mkeps, sett.plotpath + 'wferr/am' + n2s(i)
+    implot, 1d9 * fmap, blackout=nmasksel
+    mkeps, /close
+
+    ; ;Run simulation
+    run_piccsim, sim_name, rx_name, dm_cmd = dm_cmd, continue_sim = (i gt 0), $
+      sim_tag = 'stop_sequence', live_contrast = 'sci', phase_error_map = fmap, $
+      optic_displacement = disp_mat
+  endfor
 
   stop
 end

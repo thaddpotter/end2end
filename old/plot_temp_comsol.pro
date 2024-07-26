@@ -168,9 +168,9 @@ pro plot_temp_comsol, filename, key = key, flight_only = flight_only, model_only
     plotfile = filename
     mkeps, sett.plotpath + 'temp/' + tmp[0] + '/' + plotfile
 
-    if element eq 'T**5' then $
-      color = bytscl(dindgen(ntemp + 4), top = 254) else $
-      color = bytscl(dindgen(ntemp), top = 254)
+    ; if element eq 'T**5' then $
+    ; color = bytscl(dindgen(ntemp + 4), top = 254) else $
+    color = bytscl(dindgen(ntemp), top = 254)
     loadct, 39
 
     ; Initialize Plot, symbols
@@ -190,16 +190,17 @@ pro plot_temp_comsol, filename, key = key, flight_only = flight_only, model_only
       endif
     endfor
 
-    if element eq 'T**5' then begin
-      for i = 0, 3 do begin
-        j = where(tag_names(ctemp) eq 'STB' + n2s(i + 1))
-        oplot, ctime, ctemp.(j) - 273.15, color = color[i + ntemp], psym = 4
-      endfor
-    endif
+    ; Add strongback points
+    ; if element eq 'T**5' then begin
+    ; for i = 0, 3 do begin
+    ; j = where(tag_names(ctemp) eq 'STB' + n2s(i + 1))
+    ; oplot, ctime, ctemp.(j) - 273.15, color = color[i + ntemp], psym = 4
+    ; endfor
+    ; endif
 
-    if element eq 'T**5' then $
-      cbmlegend, [abbr, stb], intarr(ntemp + 4), color, [0.845, 0.94], linsize = 0.5 else $
-      cbmlegend, abbr, intarr(ntemp), color, [0.845, 0.94], linsize = 0.5
+    ; if element eq 'T**5' then $
+    ; cbmlegend, [abbr, stb], intarr(ntemp + 4), color, [0.845, 0.94], linsize = 0.5 else $
+    cbmlegend, abbr, intarr(ntemp), color, [0.845, 0.94], linsize = 0.5
     mkeps, /close
     print, 'Wrote: ' + sett.plotpath + 'temp/' + tmp[0] + '/' + plotfile
   endforeach

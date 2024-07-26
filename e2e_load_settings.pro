@@ -12,6 +12,7 @@ function e2e_load_settings
   outpath = path + 'output/' ; ;Path to output directory
   plotpath = path + 'plots/' ; ;Path to plots directory
   tdpath = '/mnt/c/Users/locsst/Desktop/PICTURE_STOP_Rev2/td/' ; ;Path to Thermal Desktop Directory
+  starpath = '/mnt/c/Users/locsst/Desktop/PICTURE_STOP_Rev2/ansys/STAR/'
 
   ; ;Exotargets Parameters
   exo = { $
@@ -47,7 +48,9 @@ function e2e_load_settings
     datapath: datapath, $
     outpath: outpath, $
     plotpath: plotpath, $
+
     tdpath: tdpath, $
+    starpath: starpath,$
 
     exo: exo, $
     picc: picc $

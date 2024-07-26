@@ -15,8 +15,9 @@ pro plot_steady, data_struct, abbr, ftemp, element
   plot, indgen(n), replicate(ftemp, n), position = [0.12, 0.12, 0.84, 0.94], yrange = minmax(ftemp) + [-30, 20], /xs, /ys, xtitle = 'Iteration', ytitle = 'Temperature [C]', color = color[0], title = element
 
   oplot, indgen(n), data_struct.(j) - 273.15, color = color[1]
-
   cbmlegend, ['Flight', 'TD'], intarr(2), color, [0.845, 0.94], linsize = 0.5
+
+  print, 'dT for ' + element + ': ' + n2s(ftemp - data_struct.(j)[n-1] + 273.15 )
 end
 
 pro plot_indiv, data_struct, abbr, tt, ftemp, tmin, newinds, element, flight_only = flight_only
@@ -194,14 +195,10 @@ pro plot_td_err, day = day, night = night, steady = steady, plotdir = plotdir, f
 
   ; Filepath
   case 1 of
-    keyword_set(steady) and keyword_set(day): $
+    keyword_set(day): $
       file = sett.tdpath + 'init_am/correlation_data_am.dlo'
-    keyword_set(steady) and keyword_set(night): $
+    keyword_set(night): $
       file = sett.tdpath + 'init_pm/correlation_data_pm.dlo'
-    (not keyword_set(steady)) and keyword_set(day): $
-      file = sett.tdpath + 'td_am/correlation_data_am.dlo'
-    (not keyword_set(steady)) and keyword_set(night): $
-      file = sett.tdpath + 'td_pm/correlation_data_pm.dlo'
     else: begin
       print, 'Wrong keyword selection'
     end
