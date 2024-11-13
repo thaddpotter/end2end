@@ -1,4 +1,4 @@
-pro run_disturbed
+pro run_disturbed, sub_dir
   compile_opt idl2
 
   ; Startup
@@ -13,7 +13,7 @@ pro run_disturbed
   rx = piccsim_readrx(piccsett.rx_path + 'rx_picture_c2_ch6.csv')
 
   ; Read Beamwalk data
-  csv_file = sett.datapath + 'STAR_res/am_beamwalk.csv'
+  csv_file = sett.datapath + 'STAR_res/' + sub_dir + '/beamwalk.csv'
   bwalk_struct = read_csv(csv_file, count = nsteps)
   ncols = n_tags(bwalk_struct)
   nrows = n_elements((bwalk_struct.(0)))
@@ -30,7 +30,7 @@ pro run_disturbed
   bwalk[2, *] -= bwalk_struct.(2)
 
   ; Read Fits Data
-  fits_file = sett.datapath + 'STAR_res/am1'
+  fits_file = sett.datapath + 'STAR_res/' + sub_dir + '/pm1'
   readmap, fits_file, fits_data, mapsamp, mapunits
   ; Calculate magnification
   ;Correct error where map sampling was increased without changing the key value
@@ -74,32 +74,70 @@ pro run_disturbed
     dm_cmd.add, cmd
   endfor
 
-  nsteps = 20
-  for i = 0, nsteps - 1 do begin
-    ; ;Read wavefront
-    fits_file = sett.datapath + 'STAR_res/am' + n2s(i + 2)
-    readmap, fits_file, fits_data, mapsamp, mapunits
+  nsteps = 70
 
-    ; Subtract at native resolution, magnify to piccsim sampling
-    err_map = magnify(fits_data - initmap, mag, piccsett.gridsize, cubic = -0.5)
-    err_map[where(finite(err_map, /nan))] = 0 ; Mask nans
-    err_map[nmasksel] = 0 ;Mask aperture before filtering
+  ;only beamwalk
+  if 0 then begin
+    for i = 0, nsteps - 1 do begin
+      disp_mat = [bwalk[0, *], bwalk[2 * i + 1 : 2 * i + 2, *]];
 
-    fmap = filter_map(err_map, high = 2, /period)
-    fmap[nmasksel] = 0
+      ; ;Run simulation
+      run_piccsim, sim_name, rx_name, dm_cmd = dm_cmd, continue_sim = (i gt 0), $
+        sim_tag = sub_dir + '_bw', live_contrast = 'sci', optic_displacement = disp_mat
+    endfor
+    plot_piccsim, 'sim_system_' + sub_dir + '_bw', 'rx_picture_c2_ch6'
+  endif
 
-    disp_mat = [bwalk[0, *], bwalk[2 * i + 1 : 2 * i + 2, *]]
+  ;only WF
+  if 0 then begin
+    for i = 0, nsteps - 1 do begin
+      ; ;Read wavefront
+      fits_file = sett.datapath + 'STAR_res/' + sub_dir + '/pm' + n2s(i + 1)
+      readmap, fits_file, fits_data, mapsamp, mapunits
 
-    check_and_mkdir, sett.plotpath + 'wferr/'
-    mkeps, sett.plotpath + 'wferr/am' + n2s(i)
-    implot, 1d9 * fmap, blackout=nmasksel
-    mkeps, /close
+      ; Subtract at native resolution, magnify to piccsim sampling
+      err_map = magnify(fits_data - initmap, mag, piccsett.gridsize, cubic = -0.5)
+      err_map[where(finite(err_map, /nan))] = 0 ; Mask nans
+      err_map[nmasksel] = 0 ;Mask aperture before filtering
 
-    ; ;Run simulation
-    run_piccsim, sim_name, rx_name, dm_cmd = dm_cmd, continue_sim = (i gt 0), $
-      sim_tag = 'stop_sequence', live_contrast = 'sci', phase_error_map = fmap, $
-      optic_displacement = disp_mat
-  endfor
+      fmap = filter_map(err_map, high = 2, /period)
+      fmap[nmasksel] = 0
 
-  stop
+      check_and_mkdir, sett.plotpath + 'wferr/' + sub_dir
+      mkeps, sett.plotpath + 'wferr/' + sub_dir + '/' + n2s(i)
+      implot, 1d9 * fmap, blackout=nmasksel
+      mkeps, /close
+
+      ; ;Run simulation
+      run_piccsim, sim_name, rx_name, dm_cmd = dm_cmd, continue_sim = (i gt 0), $
+        sim_tag = sub_dir + '_WF', live_contrast = 'sci', phase_map = 0.85d * fmap 
+      print,max(fmap)
+    endfor
+    plot_piccsim, 'sim_system_' + sub_dir + '_WF', 'rx_picture_c2_ch6'
+  endif
+
+  ;All error sources
+  if 1 then begin
+    for i = 0, nsteps - 1 do begin
+      ; ;Read wavefront
+      fits_file = sett.datapath + 'STAR_res/' + sub_dir + '/pm' + n2s(i + 1)
+      readmap, fits_file, fits_data, mapsamp, mapunits
+
+      ; Subtract at native resolution, magnify to piccsim sampling
+      err_map = magnify(fits_data - initmap, mag, piccsett.gridsize, cubic = -0.5)
+      err_map[where(finite(err_map, /nan))] = 0 ; Mask nans
+      err_map[nmasksel] = 0 ;Mask aperture before filtering
+
+      fmap = filter_map(err_map, high = 2, /period)
+      fmap[nmasksel] = 0
+
+      disp_mat = [bwalk[0, *], bwalk[2 * i + 1 : 2 * i + 2, *]]
+
+      ; ;Run simulation
+      run_piccsim, sim_name, rx_name, dm_cmd = dm_cmd, continue_sim = (i gt 0), $
+        sim_tag = sub_dir + '_All', live_contrast = 'sci', phase_map = 0.85d * fmap, $
+        optic_displacement = disp_mat
+    endfor
+    plot_piccsim, 'sim_system_' + sub_dir + '_All', 'rx_picture_c2_ch6'
+  endif
 end
