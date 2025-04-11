@@ -1,4 +1,4 @@
-pro gen_flight_temp, start_time, stop_time, interval, label = label
+pro gen_flight_temp, start_time, stop_time, interval, label = label, celsius = celsius, all = all
   compile_opt idl2
   ; ------------------------------------------------
   ; Generates a list of temperatures from flight 1 data for some time window
@@ -26,11 +26,15 @@ pro gen_flight_temp, start_time, stop_time, interval, label = label
   n_points = ceil((stop_time - start_time) / interval + 1)
   points = dindgen(n_points, start = start_time, increment = interval)
 
-  t_list = dblarr(n_points)
+  t_list = intarr(n_points)
   for i = 0, n_points - 1 do begin
     tmp = min(abs(time - points[i]), ind)
     t_list[i] = ind
   endfor
+
+  ; Find total number of time points in interval, make index list
+  total_points = t_list[n_points - 1] - t_list[0]
+  full_t_list = indgen(total_points, start = t_list[0])
 
   ; make output struct (TODO: Make dynamic from measure file?)
   tmp = {time: 0d, $
@@ -70,6 +74,8 @@ pro gen_flight_temp, start_time, stop_time, interval, label = label
     }
 
   out = replicate(tmp, n_points)
+  linout = replicate(tmp, n_points)
+  fullout = replicate(tmp, total_points)
 
   ; Get tag names
   flight_tags = strarr(n_elements(t.abbr))
@@ -81,19 +87,23 @@ pro gen_flight_temp, start_time, stop_time, interval, label = label
   ; Fill output
   n_abbr = n_elements(key_arr[*, 0])
   out.time = time[t_list]
+  linout.time = time[t_list]
+  fullout.time = time[full_t_list]
 
   for j = 1, n_abbr do begin
     sel = where(strmatch(flight_tags, newtags[j]))
 
     ; If theres no perfect match, average over the numbered sensors with the same name
+    if not keyword_set(celsius) then t_adj = 273.15 else t_adj = 0
+
     if sel le 0 then begin
       string2 = newtags[j].substring(0, 2) + '?'
       sel = where(strmatch(flight_tags, string2))
       tmp = mean(adc_temp[sel, *], dimension = 1, /double)
-      out.(j) = reform(tmp[t_list]) + 273.15
+      out.(j) = reform(tmp[t_list]) + t_adj
     endif else begin
       ind = fix(sel[0])
-      out.(j) = reform(adc_temp[ind, t_list]) + 273.15
+      out.(j) = reform(adc_temp[ind, t_list]) + t_adj
     endelse
   endfor
 
@@ -109,4 +119,61 @@ pro gen_flight_temp, start_time, stop_time, interval, label = label
   write_ttable, 1, out, key_arr, label = label
   close, 1
   print, 'Wrote: ' + filename
+
+  ; ;Regression for ANSYS linear temps
+  tarr = out.time
+  tmp = dblarr(n_points)
+
+  for j = 1, n_abbr do begin
+    ; Fit to line
+    reg = linfit(tarr, out.(j))
+
+    ; use linfit to generate new temps
+    for i = 0, n_points - 1 do begin
+      tmp[i] = reg[0] + reg[1] * tarr[i]
+    endfor
+
+    ; write to struct
+    linout.(j) = tmp
+  endfor
+
+  ; write out
+  filename = 'tvals_' + t1 + '_' + t2 + '_linear.csv'
+
+  openw, 1, sett.outpath + 'temp/' + filename
+  write_ttable, 1, linout, key_arr, label = label
+  close, 1
+  print, 'Wrote: ' + filename
+
+  if keyword_set(all) then begin
+    for j = 1, n_abbr do begin
+      sel = where(strmatch(flight_tags, newtags[j]))
+
+      ; If theres no perfect match, average over the numbered sensors with the same name
+      if not keyword_set(celsius) then t_adj = 273.15 else t_adj = 0
+
+      if sel le 0 then begin
+        string2 = newtags[j].substring(0, 2) + '?'
+        sel = where(strmatch(flight_tags, string2))
+        tmp = mean(adc_temp[sel, *], dimension = 1, /double)
+        fullout.(j) = reform(tmp[full_t_list]) + t_adj
+      endif else begin
+        ind = fix(sel[0])
+        fullout.(j) = reform(adc_temp[ind, full_t_list]) + t_adj
+      endelse
+    endfor
+
+    ; fix time formatting for filename
+    t1 = strjoin(strsplit(n2s(start_time, format = '(F5.2)'), '.', /extract))
+    t2 = strjoin(strsplit(n2s(stop_time, format = '(F5.2)'), '.', /extract))
+
+    ; write to csv
+    filename = 'tvals_' + t1 + '_' + t2 + '_all.csv'
+    check_and_mkdir, sett.outpath + 'temp/'
+
+    openw, 1, sett.outpath + 'temp/' + filename
+    write_ttable, 1, fullout, key_arr, label = label
+    close, 1
+    print, 'Wrote: ' + filename
+  endif
 end

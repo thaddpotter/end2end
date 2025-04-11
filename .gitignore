@@ -2,8 +2,9 @@
 output
 plots
 
-#Ignore flight data
+#Ignore flight, non-essentialSTOP data
 data/flight
+data/STAR_res
 
 #ignore idl binaries
 *.idl

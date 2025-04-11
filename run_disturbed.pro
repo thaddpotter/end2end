@@ -33,8 +33,8 @@ pro run_disturbed, sub_dir
   fits_file = sett.datapath + 'STAR_res/' + sub_dir + '/pm1'
   readmap, fits_file, fits_data, mapsamp, mapunits
   ; Calculate magnification
-  ;Correct error where map sampling was increased without changing the key value
-  mag = double(mapsamp)*2 * 1.04d * (piccsett.gridsize * piccsett.beamratio) / (2 * rx[0].radius)
+  ; Correct error where map sampling was increased without changing the key value
+  mag = double(mapsamp) * 2 * 1.04d * (piccsett.gridsize * piccsett.beamratio) / (2 * rx[0].radius)
 
   ; Make aperture mask
   xyimage, piccsett.gridsize, piccsett.gridsize, xim, yim, rim, /quadrant, /index
@@ -76,10 +76,10 @@ pro run_disturbed, sub_dir
 
   nsteps = 70
 
-  ;only beamwalk
+  ; only beamwalk
   if 0 then begin
     for i = 0, nsteps - 1 do begin
-      disp_mat = [bwalk[0, *], bwalk[2 * i + 1 : 2 * i + 2, *]];
+      disp_mat = [bwalk[0, *], bwalk[2 * i + 1 : 2 * i + 2, *]] ;
 
       ; ;Run simulation
       run_piccsim, sim_name, rx_name, dm_cmd = dm_cmd, continue_sim = (i gt 0), $
@@ -88,35 +88,7 @@ pro run_disturbed, sub_dir
     plot_piccsim, 'sim_system_' + sub_dir + '_bw', 'rx_picture_c2_ch6'
   endif
 
-  ;only WF
-  if 0 then begin
-    for i = 0, nsteps - 1 do begin
-      ; ;Read wavefront
-      fits_file = sett.datapath + 'STAR_res/' + sub_dir + '/pm' + n2s(i + 1)
-      readmap, fits_file, fits_data, mapsamp, mapunits
-
-      ; Subtract at native resolution, magnify to piccsim sampling
-      err_map = magnify(fits_data - initmap, mag, piccsett.gridsize, cubic = -0.5)
-      err_map[where(finite(err_map, /nan))] = 0 ; Mask nans
-      err_map[nmasksel] = 0 ;Mask aperture before filtering
-
-      fmap = filter_map(err_map, high = 2, /period)
-      fmap[nmasksel] = 0
-
-      check_and_mkdir, sett.plotpath + 'wferr/' + sub_dir
-      mkeps, sett.plotpath + 'wferr/' + sub_dir + '/' + n2s(i)
-      implot, 1d9 * fmap, blackout=nmasksel
-      mkeps, /close
-
-      ; ;Run simulation
-      run_piccsim, sim_name, rx_name, dm_cmd = dm_cmd, continue_sim = (i gt 0), $
-        sim_tag = sub_dir + '_WF', live_contrast = 'sci', phase_map = 0.85d * fmap 
-      print,max(fmap)
-    endfor
-    plot_piccsim, 'sim_system_' + sub_dir + '_WF', 'rx_picture_c2_ch6'
-  endif
-
-  ;All error sources
+  ; only WF
   if 1 then begin
     for i = 0, nsteps - 1 do begin
       ; ;Read wavefront
@@ -126,7 +98,35 @@ pro run_disturbed, sub_dir
       ; Subtract at native resolution, magnify to piccsim sampling
       err_map = magnify(fits_data - initmap, mag, piccsett.gridsize, cubic = -0.5)
       err_map[where(finite(err_map, /nan))] = 0 ; Mask nans
-      err_map[nmasksel] = 0 ;Mask aperture before filtering
+      err_map[nmasksel] = 0 ; Mask aperture before filtering
+
+      fmap = filter_map(err_map, high = 2, /period)
+      fmap[nmasksel] = 0
+
+      check_and_mkdir, sett.plotpath + 'wferr/' + sub_dir
+      mkeps, sett.plotpath + 'wferr/' + sub_dir + '/' + n2s(i)
+      implot, 1d9 * fmap, blackout = nmasksel
+      mkeps, /close
+
+      ; ;Run simulation
+      run_piccsim, sim_name, rx_name, dm_cmd = dm_cmd, continue_sim = (i gt 0), $
+        sim_tag = sub_dir + '_WF', live_contrast = 'sci', phase_map = 0.85d * fmap
+      print, max(fmap)
+    endfor
+    plot_piccsim, 'sim_system_' + sub_dir + '_WF', 'rx_picture_c2_ch6'
+  endif
+
+  ; All error sources
+  if 0 then begin
+    for i = 0, nsteps - 1 do begin
+      ; ;Read wavefront
+      fits_file = sett.datapath + 'STAR_res/' + sub_dir + '/pm' + n2s(i + 1)
+      readmap, fits_file, fits_data, mapsamp, mapunits
+
+      ; Subtract at native resolution, magnify to piccsim sampling
+      err_map = magnify(fits_data - initmap, mag, piccsett.gridsize, cubic = -0.5)
+      err_map[where(finite(err_map, /nan))] = 0 ; Mask nans
+      err_map[nmasksel] = 0 ; Mask aperture before filtering
 
       fmap = filter_map(err_map, high = 2, /period)
       fmap[nmasksel] = 0
